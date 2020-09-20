@@ -1,8 +1,7 @@
 import axios from 'axios'
+import { options as OPT } from './main'
 
 const parseGitPatch = require('parse-git-patch')
-
-const TOKEN = ''
 
 type CommitInfo = {
     owner: string
@@ -35,7 +34,7 @@ const fetch = async (
     } catch (e) {
         return {
             err: true,
-            status: e['status'],
+            status: e['response']['status'],
             response: e['response'],
         }
     }
@@ -79,7 +78,7 @@ export const parseCommitUri = (commitUri: string): CommitInfo => {
     }
 }
 
-type PatchFile = {
+export type PatchFile = {
     sha: string
     filename: string
     status: 'modified'
@@ -102,10 +101,14 @@ export const fetchCommit = async (commitUri: string): Promise<PatchFile[]> => {
     const commit = parseCommitUri(commitUri)
     const apiUri = `https://api.github.com/repos/${commit.owner}/${commit.repo}/commits/${commit.commit_id}`
     const res = await fetch(apiUri, 'GET', {
-        Authorization: `token ${TOKEN}`,
+        Authorization: OPT.githubToken ? `token ${OPT.githubToken}` : undefined,
     })
     if (res.err) {
-        //
+        if (res.status == 422) {
+            return []
+        }
+        // TODO:
+        return []
     } else {
         const data = res.response as {
             files: {

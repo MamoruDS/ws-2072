@@ -6,6 +6,12 @@ import { writer, DataType } from './record'
 
 export { writer as CSVWriter }
 
+export const options = {
+    githubToken: undefined,
+} as {
+    githubToken: string
+}
+
 export const loadPatchFile = (
     file: fetch.PatchFile,
     commitURL?: string
