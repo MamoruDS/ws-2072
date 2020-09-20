@@ -1,4 +1,4 @@
-import { genRandom } from './ast'
+import { genRandomHex } from './utils'
 
 const createCsvWriter = require('csv-writer').createObjectCsvWriter
 
@@ -12,8 +12,8 @@ export type DataType = {
     remark?: string
 }
 
-export const writer = (data: DataType[], output?: string) => {
-    const filename = output ? output : genRandom(6) + '.csv'
+export const writer = (data: DataType[], outputPath?: string) => {
+    const filename = outputPath ? outputPath : genRandomHex(6) + '.csv'
     console.log('\t>[\x1b[34mINF\x1b[0m] saving to ' + filename)
 
     const csvWriter = createCsvWriter({

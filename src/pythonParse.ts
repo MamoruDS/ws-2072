@@ -22,7 +22,7 @@ type CodeLineExt = {
     lineIndex: number
 }
 
-type Modifiy = {
+type Modify = {
     line: string
     lineNumber: number
     added: boolean
@@ -140,11 +140,11 @@ export class PyCode {
             basicLines.push(line)
         }
         for (const i in basicLines) {
-            const bline = basicLines[i]
+            const bLine = basicLines[i]
             const codeline: CodeLine = {
-                modified: bline.modified,
-                indent: Math.round(bline.space / this._localMinIndent),
-                code: bline.code,
+                modified: bLine.modified,
+                indent: Math.round(bLine.space / this._localMinIndent),
+                code: bLine.code,
                 lineNr: parseInt(i),
             }
             if (target == 'new') {
