@@ -1,15 +1,30 @@
 import { PyCode, Changes } from './pythonParse'
 import * as fetch from './fetch'
-import { getAST } from './ast'
+import { getAST, ASTDiff, ASTDiffRes } from './ast'
 import { RangeChecker } from './range'
 import { writer, DataType } from './record'
 
-export { writer as CSVWriter }
+export { writer as CSVWriter, getAST }
 
 export const options = {
     githubToken: undefined,
+    maxASTNodeCnt: 500,
+    maxPYLineCnt: 100,
+    pyBIN: 'python',
 } as {
     githubToken: string
+    maxASTNodeCnt: number
+    maxPYLineCnt: number
+    pyBIN: string
+}
+
+export const ASTDiffFromSnip = (
+    snipOld: string,
+    snipNew: string
+): ASTDiffRes[] => {
+    const astOld = getAST(snipOld)
+    const astNew = getAST(snipNew)
+    return ASTDiff(astOld['ast_object'], astNew['ast_object'])
 }
 
 export const loadPatchFile = (
@@ -84,7 +99,7 @@ export const loadPatchFile = (
                 })
             } catch (e) {
                 throw new Error(
-                    `[\x1b[31mERR\x1b[0m] some error occurred when loadPatchFile [${file.filename}]`
+                    `[\x1b[31mERR\x1b[0m] some error occurred when loadPatchFile [${file.filename}], error: ${e}`
                 )
             }
         }
