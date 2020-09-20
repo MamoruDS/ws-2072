@@ -333,12 +333,16 @@ export class PyCode {
         })
 
         if (codelines[0].indent > localMinFix)
-            throw new Error('snip top at local min scope')
+            throw new Error(
+                'pythonParse.genCodeSnip: snip top at local min scope'
+            )
         codelines.map((line) => {
             code.push(' '.repeat((line.indent - localMinFix) * 4) + line.code)
         })
-        if (code.length > Infinity)
-            throw new Error('snip larger then max lines allowed')
+        if (code.length > maxLine)
+            throw new Error(
+                'pythonParse.genCodeSnip: snip larger then max lines allowed'
+            )
         return code.join('\n')
     }
     getScopeLIParentCLs = (tN: boolean, lineIndex: number): CodeLine[] => {

@@ -27,11 +27,22 @@ export const ASTDiffFromSnip = (
     return ASTDiff(astOld['ast_object'], astNew['ast_object'])
 }
 
+type OutputData = {
+    old: string
+    new: string
+    url: string
+    ast: {
+        old: number
+        new: number
+        diff: ASTDiffRes[]
+    }
+}
+
 export const loadPatchFile = (
     file: fetch.PatchFile,
     commitURL?: string
-): DataType[] => {
-    const data: DataType[] = []
+): OutputData[] => {
+    const data: OutputData[] = []
     const changes = { '+': [], '-': [] } as Changes
     for (const c of file.modified_lines) {
         if (c.added) {
@@ -78,24 +89,45 @@ export const loadPatchFile = (
                 ]
                 if (rangeCheckerRev.collisionWith(rRev)) continue
                 rangeChecker.add(rRev)
-                const code = pyCode.genCodeSnip(tN, r[0], r[1], 100)
-                const codeRev = pyCode.genCodeSnip(!tN, rRev[0], rRev[1], 100)
+                let code: string, codeRev: string
+                try {
+                    code = pyCode.genCodeSnip(
+                        tN,
+                        r[0],
+                        r[1],
+                        options.maxPYLineCnt
+                    )
+                    codeRev = pyCode.genCodeSnip(
+                        !tN,
+                        rRev[0],
+                        rRev[1],
+                        options.maxPYLineCnt
+                    )
+                } catch (e) {
+                    continue
+                }
+
                 const ast = getAST(code)
                 const astRev = getAST(codeRev)
+                const astDiff = ASTDiff(
+                    (tN ? astRev : ast)['ast_object'],
+                    (tN ? ast : astRev)['ast_object']
+                )
                 if (ast.err || astRev.err) continue
-                if (ast.ast_count == astRev.ast_count) continue
-                if (ast.ast_count >= 500 || astRev.ast_count >= 500) continue
+                if (
+                    ast.ast_count >= options.maxASTNodeCnt ||
+                    astRev.ast_count >= options.maxASTNodeCnt
+                )
+                    continue
                 data.push({
                     old: tN ? codeRev : code,
                     new: tN ? code : codeRev,
                     url: commitURL,
-                    change: tN
-                        ? ast.ast_count > astRev.ast_count
-                            ? 'add'
-                            : 'delete'
-                        : ast.ast_count > astRev.ast_count
-                        ? 'delete'
-                        : 'add',
+                    ast: {
+                        old: (tN ? astRev : ast)['ast_count'],
+                        new: (tN ? ast : astRev)['ast_count'],
+                        diff: astDiff,
+                    },
                 })
             } catch (e) {
                 throw new Error(
@@ -107,8 +139,8 @@ export const loadPatchFile = (
     return data
 }
 
-export const loadCommitURL = async (commit: string): Promise<DataType[]> => {
-    const data: DataType[] = []
+export const loadCommitURL = async (commit: string): Promise<OutputData[]> => {
+    const data: OutputData[] = []
     const files = await fetch.fetchCommit(commit)
     for (const file of files) {
         try {

@@ -68,6 +68,7 @@ export const parseCommitUri = (commitUri: string): CommitInfo => {
         /github.com\/([^\/]{1,})\/([^\/]{1,})\/commit\/([\w]{1,})/g
     )
     const match = re.exec(commitUri)
+    if (match == null) return undefined
     const owner = match[1]
     const repo = match[2]
     const commit = match[3]
@@ -99,9 +100,10 @@ export type PatchFile = {
 
 export const fetchCommit = async (commitUri: string): Promise<PatchFile[]> => {
     const commit = parseCommitUri(commitUri)
+    if (!commit) return []
     const apiUri = `https://api.github.com/repos/${commit.owner}/${commit.repo}/commits/${commit.commit_id}`
     const res = await fetch(apiUri, 'GET', {
-        Authorization: OPT.githubToken ? `token ${OPT.githubToken}` : ' ',
+        Authorization: OPT.githubToken ? `token ${OPT.githubToken}` : '',
     })
     if (res.err) {
         if (res.status == 422) {
