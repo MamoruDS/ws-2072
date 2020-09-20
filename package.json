@@ -1,6 +1,6 @@
 {
     "name": "ws-2072",
-    "version": "1.0.0",
+    "version": "1.0.0-beta.0",
     "description": "Auto fetching commits of giving python repos from github, and parsing them into code snip.",
     "main": "dist/main.js",
     "scripts": {
@@ -18,17 +18,11 @@
     "homepage": "https://github.com/MamoruDS/ws-2072#readme",
     "dependencies": {
         "axios": "^0.19.2",
-        "body-parser": "^1.19.0",
         "csv-writer": "^1.6.0",
-        "express": "^4.17.1",
-        "lodash": "^4.17.19",
-        "lowdb": "^1.0.0",
-        "moment": "^2.27.0",
         "parse-git-patch": "^1.0.7"
     },
     "devDependencies": {
         "@types/axios": "^0.14.0",
-        "@types/lodash": "^4.14.149",
         "@types/node": "^13.13.15"
     }
 }
