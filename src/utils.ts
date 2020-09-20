@@ -19,3 +19,14 @@ export const genRandomHex = (len: number): string => {
     }
     return id.join('')
 }
+
+export const getObjByPath = (obj: object, path: string[] = []): object => {
+    try {
+        for (const p of path) {
+            obj = { ...obj[p] }
+        }
+    } catch (e) {
+        obj = undefined
+    }
+    return obj
+}
