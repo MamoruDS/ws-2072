@@ -27,7 +27,7 @@ export const loadFromSnip = (snipOld: string, snipNew: string): OutputData => {
         url: undefined,
         ast: {
             old: astOld['ast_count'],
-            new: astOld['ast_count'],
+            new: astNew['ast_count'],
             diff: ASTDiff(astOld['ast_object'], astNew['ast_object']),
         },
     }
