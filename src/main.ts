@@ -18,13 +18,19 @@ export const options = {
     pythonBIN: string
 }
 
-export const ASTDiffFromSnip = (
-    snipOld: string,
-    snipNew: string
-): ASTDiffRes[] => {
+export const loadFromSnip = (snipOld: string, snipNew: string): OutputData => {
     const astOld = getAST(snipOld)
     const astNew = getAST(snipNew)
-    return ASTDiff(astOld['ast_object'], astNew['ast_object'])
+    return {
+        old: snipOld,
+        new: snipNew,
+        url: undefined,
+        ast: {
+            old: astOld['ast_count'],
+            new: astOld['ast_count'],
+            diff: ASTDiff(astOld['ast_object'], astNew['ast_object']),
+        },
+    }
 }
 
 type OutputData = {
