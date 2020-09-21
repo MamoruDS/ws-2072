@@ -10,12 +10,12 @@ export const options = {
     githubToken: undefined,
     maxASTNodeCnt: 500,
     maxPYLineCnt: 100,
-    pyBIN: 'python',
+    pythonBIN: 'python',
 } as {
     githubToken: string
     maxASTNodeCnt: number
     maxPYLineCnt: number
-    pyBIN: string
+    pythonBIN: string
 }
 
 export const ASTDiffFromSnip = (

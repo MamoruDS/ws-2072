@@ -3,9 +3,15 @@ import { genRandomHex, getObjByPath } from './utils'
 import { options as OPT } from './main'
 import { exit } from 'process'
 import * as fs from 'fs'
+import * as path from 'path'
 
 const TEMP_PATH = 'temp'
-const AST_SCRIPT = 'scripts/ast_nodes.py'
+// const AST_SCRIPT = 'scripts/ast_nodes.py'
+const AST_SCRIPT_PATH = path.join(
+    path.dirname(__dirname),
+    'scripts',
+    'ast_nodes.py'
+)
 
 if (fs.existsSync(TEMP_PATH)) {
     if (!fs.lstatSync(TEMP_PATH).isDirectory) {
@@ -30,7 +36,7 @@ export const getAST = (
     const filename = `temp/${genRandomHex(6)}.py`
     fs.writeFileSync(filename, code)
 
-    let astProc = spawnSync(OPT.pyBIN, [AST_SCRIPT, filename], {
+    let astProc = spawnSync(OPT.pythonBIN, [AST_SCRIPT_PATH, filename], {
         encoding: 'utf-8',
     })
     fs.unlinkSync(filename)
