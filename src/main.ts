@@ -44,6 +44,8 @@ type OutputData = {
     }
 }
 
+export { OutputData as CodeInfo }
+
 export const loadPatchFile = (
     file: fetch.PatchFile,
     commitURL?: string
