@@ -27,7 +27,7 @@ export const loadFromSnip = (snipOld: string, snipNew: string): OutputData => {
         url: undefined,
         ast: {
             old: astOld['ast_count'],
-            new: astNew['ast_count'],
+            new: astOld['ast_count'],
             diff: ASTDiff(astOld['ast_object'], astNew['ast_object']),
         },
     }
@@ -43,8 +43,6 @@ type OutputData = {
         diff: ASTDiffRes[]
     }
 }
-
-export { OutputData as CodeInfo }
 
 export const loadPatchFile = (
     file: fetch.PatchFile,
@@ -83,7 +81,6 @@ export const loadPatchFile = (
                 const rangeCheckerRev = tN ? rangeOld : rangeNew
                 const r: [number, number] = [localFnCL.lineNr, end.lineNr]
                 if (rangeChecker.collisionWith(r)) continue
-                rangeChecker.add(r)
                 const localFnCLRev = pyCode.gethScopeRangeByName(
                     !tN,
                     localFnCL.type,
@@ -96,7 +93,6 @@ export const loadPatchFile = (
                     localFnCLRev.end,
                 ]
                 if (rangeCheckerRev.collisionWith(rRev)) continue
-                rangeChecker.add(rRev)
                 let code: string, codeRev: string
                 try {
                     code = pyCode.genCodeSnip(
@@ -127,6 +123,8 @@ export const loadPatchFile = (
                     astRev.ast_count >= options.maxASTNodeCnt
                 )
                     continue
+                rangeChecker.add(r)
+                rangeChecker.add(rRev)
                 data.push({
                     old: tN ? codeRev : code,
                     new: tN ? code : codeRev,
