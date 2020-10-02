@@ -208,7 +208,7 @@ export class PyCode {
         while (this.getCL(tN)[i]) {
             const _line = this.getCL(tN)[i]
             if (_line.indent == targetScope) {
-                // TODO: wrap???
+                // TODO: wrap handle
                 if (
                     _line.code.slice(0, 2) == '):' ||
                     _line.code.slice(0, 2) == ']:'
@@ -223,6 +223,9 @@ export class PyCode {
                     }
                     break
                 }
+            }
+            if(_line.indent < targetScope) {
+                break
             }
             i += lineFix
         }
