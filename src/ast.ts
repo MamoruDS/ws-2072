@@ -6,7 +6,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 const TEMP_PATH = 'temp'
-// const AST_SCRIPT = 'scripts/ast_nodes.py'
+
 const AST_SCRIPT_PATH = path.join(
     path.dirname(__dirname),
     'scripts',
@@ -21,17 +21,28 @@ if (fs.existsSync(TEMP_PATH)) {
     fs.mkdirSync(TEMP_PATH)
 }
 
+type ASTRes = {
+    ast_count: number
+    ast_json: ASTNode
+}
+
+type ASTNode = {
+    node: string
+    lineno?: number
+    end_lineno?: number
+}
+
 export const getAST = (
     code: string
 ): {
     err: boolean
     ast_count: number
-    ast_object: object
+    ast_object: ASTNode
 } => {
     const res = {
         err: false,
         ast_count: 0,
-        ast_object: {},
+        ast_object: {} as ASTNode,
     }
     const filename = `temp/${genRandomHex(6)}.py`
     fs.writeFileSync(filename, code)
@@ -43,16 +54,23 @@ export const getAST = (
     if (astProc.status != 0) {
         return { ...res, err: true }
     } else {
-        const astRes = JSON.parse(astProc.stdout)
+        const astRes = JSON.parse(astProc.stdout) as ASTRes
         return {
             ...res,
-            ast_count: parseInt(astRes['ast_count']),
+            ast_count: astRes['ast_count'],
             ast_object: astRes['ast_json'],
         }
     }
 }
 
-export const getASTNodeCnt = (obj: object): number => {
+export const getASTNode = (obj: ASTNode, path: string): ASTNode => {
+    for (const p of path.split('/')) {
+        obj = obj[p]
+    }
+    return obj
+}
+
+export const getASTNodeCnt = (obj: ASTNode | [ASTNode]): number => {
     let nodeCnt = 0
     if (obj['node']) {
         nodeCnt++
@@ -78,13 +96,13 @@ export type ASTDiffRes = {
 }
 
 export const ASTDiff = (
-    objOld: object,
-    objNew: object,
+    nodeOld: ASTNode,
+    nodeNew: ASTNode,
     path: string[] = []
 ): ASTDiffRes[] => {
     const res: ASTDiffRes[] = []
-    const localOld = getObjByPath(objOld, path)
-    const localNew = getObjByPath(objNew, path)
+    const localOld = getObjByPath(nodeOld, path)
+    const localNew = getObjByPath(nodeNew, path)
 
     const keys = [...Object.keys(localNew), ...Object.keys(localOld)]
     for (let i = 0; keys[i]; i++) {
@@ -151,7 +169,7 @@ export const ASTDiff = (
                                         getASTNodeCnt(nodeOld),
                                 })
                             } else {
-                                ASTDiff(objOld, objNew, [
+                                ASTDiff(nodeOld, nodeNew, [
                                     ...path,
                                     key,
                                     i.toString(),
@@ -163,7 +181,7 @@ export const ASTDiff = (
                         i++
                     }
                 } else {
-                    ASTDiff(objOld, objNew, [...path, key]).forEach((d) => {
+                    ASTDiff(nodeOld, nodeNew, [...path, key]).forEach((d) => {
                         res.push(d)
                     })
                 }
