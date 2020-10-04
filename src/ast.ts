@@ -63,11 +63,14 @@ export const getAST = (
     }
 }
 
-export const getASTNode = (obj: ASTNode, path: string): ASTNode => {
-    for (const p of path.split('/')) {
-        obj = obj[p]
+export const getASTNodeByPath = (
+    node: ASTNode,
+    path: string | string[]
+): ASTNode => {
+    for (const p of Array.isArray(path) ? path : path.split('/')) {
+        node = node[p]
     }
-    return obj
+    return node
 }
 
 export const getASTNodeCnt = (obj: ASTNode | [ASTNode]): number => {
@@ -96,13 +99,19 @@ export type ASTDiffRes = {
 }
 
 export const ASTDiff = (
-    nodeOld: ASTNode,
-    nodeNew: ASTNode,
-    path: string[] = []
+    rootOld: ASTNode,
+    rootNew: ASTNode,
+    path: string[] = [],
+    keyIgnore: string[] = [
+        'lineno',
+        'end_lineno',
+        'col_offset',
+        'end_col_offset',
+    ]
 ): ASTDiffRes[] => {
     const res: ASTDiffRes[] = []
-    const localOld = getObjByPath(nodeOld, path)
-    const localNew = getObjByPath(nodeNew, path)
+    const localOld = getASTNodeByPath(rootOld, path)
+    const localNew = getASTNodeByPath(rootNew, path)
 
     const keys = [...Object.keys(localNew), ...Object.keys(localOld)]
     for (let i = 0; keys[i]; i++) {
@@ -169,7 +178,7 @@ export const ASTDiff = (
                                         getASTNodeCnt(nodeOld),
                                 })
                             } else {
-                                ASTDiff(nodeOld, nodeNew, [
+                                ASTDiff(rootOld, rootNew, [
                                     ...path,
                                     key,
                                     i.toString(),
@@ -181,12 +190,12 @@ export const ASTDiff = (
                         i++
                     }
                 } else {
-                    ASTDiff(nodeOld, nodeNew, [...path, key]).forEach((d) => {
+                    ASTDiff(rootOld, rootNew, [...path, key]).forEach((d) => {
                         res.push(d)
                     })
                 }
             } else {
-                if (valueNew !== valueOld) {
+                if (valueNew !== valueOld && keyIgnore.indexOf(key) == -1) {
                     res.push({
                         path: [...path, key].join('/'),
                         type: 'modified_value',
