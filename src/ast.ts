@@ -68,7 +68,15 @@ export const getASTNodeByPath = (
     path: string | string[]
 ): ASTNode => {
     for (const p of Array.isArray(path) ? path : path.split('/')) {
-        node = node[p]
+        try {
+            node = node[p]
+        } catch (e) {
+            if (e instanceof TypeError) {
+                return undefined
+            } else {
+                throw e
+            }
+        }
     }
     return node
 }
@@ -92,27 +100,54 @@ export const getASTNodeCnt = (obj: ASTNode | [ASTNode]): number => {
     return nodeCnt
 }
 
+type ASTModifyType = 'node_added' | 'node_deleted' | 'node_modified' | 'attr_added' | 'attr_deleted' | 'attr_modified'
+
 export type ASTDiffRes = {
     path: string
-    type: 'added' | 'deleted' | 'modified_value' | 'modified_node'
-    node: number
+    type: ASTModifyType
+    delta: number
 }
 
 export const ASTDiff = (
     rootOld: ASTNode,
     rootNew: ASTNode,
-    path: string[] = [],
     keyIgnore: string[] = [
         'lineno',
         'end_lineno',
         'col_offset',
         'end_col_offset',
-    ]
+    ],
+    path: string[] = []
 ): ASTDiffRes[] => {
     const res: ASTDiffRes[] = []
+    const diff = (path: string[]) => {
+        const _old = getASTNodeByPath(rootOld, path)
+        const _new = getASTNodeByPath(rootNew, path)
+        const delta =
+            (_new ? getASTNodeCnt(_new) : 0) - (_old ? getASTNodeCnt(_old) : 0)
+        let type: ASTModifyType
+        if (_old && _new) {
+            if (path[path.length - 1] == 'node') {
+                path.pop()
+                type = 'node_modified'
+            }else{
+                type = 'attr_modified'
+            }
+        } else if (!_new && !_old) {
+            return 
+        } else if (!_new) {
+            type = delta ? 'node_deleted' : 'attr_deleted'
+        } else if (!_old) {
+            type = delta ? 'node_added' : 'attr_added'
+        }
+        res.push({
+            path: path.join('/'),
+            type,
+            delta,
+        })
+    }
     const localOld = getASTNodeByPath(rootOld, path)
     const localNew = getASTNodeByPath(rootNew, path)
-
     const keys = [...Object.keys(localNew), ...Object.keys(localOld)]
     for (let i = 0; keys[i]; i++) {
         for (let j = i + 1; keys[j]; ) {
@@ -124,84 +159,48 @@ export const ASTDiff = (
         }
     }
     for (const key of keys) {
-        const valueOld = localOld[key]
-        const valueNew = localNew[key]
-        if (typeof valueOld == 'undefined') {
-            res.push({
-                path: [...path, key].join('/'),
-                type: 'added',
-                node: getASTNodeCnt(valueNew),
-            })
-        } else if (typeof valueNew == 'undefined') {
-            res.push({
-                path: [...path, key].join('/'),
-                type: 'deleted',
-                node: 0 - getASTNodeCnt(valueOld),
-            })
-        } else {
-            if (
-                typeof valueNew == 'object' &&
-                typeof valueOld == 'object' &&
-                valueNew !== null &&
-                valueOld !== null
-            ) {
-                if (Array.isArray(valueNew) && Array.isArray(valueOld)) {
-                    let i = 0
-                    while (true) {
-                        const nodeOld = valueOld[i]
-                        const nodeNew = valueNew[i]
-
-                        if (
-                            typeof nodeOld == 'undefined' &&
-                            typeof nodeNew == 'undefined'
-                        ) {
-                            break
-                        } else if (typeof nodeOld == 'undefined') {
-                            res.push({
-                                path: [...path, key, i].join('/'),
-                                type: 'added',
-                                node: getASTNodeCnt(nodeNew),
-                            })
-                        } else if (typeof nodeNew == 'undefined') {
-                            res.push({
-                                path: [...path, key, i].join('/'),
-                                type: 'deleted',
-                                node: 0 - getASTNodeCnt(nodeOld),
-                            })
-                        } else {
-                            if (nodeOld['node'] != nodeNew['node']) {
-                                res.push({
-                                    path: [...path, key, i].join('/'),
-                                    type: 'modified_node',
-                                    node:
-                                        getASTNodeCnt(nodeNew) -
-                                        getASTNodeCnt(nodeOld),
-                                })
-                            } else {
-                                ASTDiff(rootOld, rootNew, [
-                                    ...path,
-                                    key,
-                                    i.toString(),
-                                ]).forEach((d) => {
-                                    res.push(d)
-                                })
-                            }
-                        }
-                        i++
+        if (keyIgnore.indexOf(key) != -1) continue
+        const valOld = localOld[key]
+        const valNew = localNew[key]
+        if (
+            typeof valOld == 'object' &&
+            typeof valNew == 'object' &&
+            valOld !== null &&
+            valNew !== null
+        ) {
+            if (Array.isArray(valOld) || Array.isArray(valNew)) {
+                let child = 0
+                while (true) {
+                    if (
+                        typeof valOld[child] == 'undefined' &&
+                        typeof valNew[child] == 'undefined'
+                    ) {
+                        break
+                    } else if (
+                        typeof valOld[child] == 'object' &&
+                        typeof valNew[child] == 'object'
+                    ) {
+                        ASTDiff(rootOld, rootNew, keyIgnore, [
+                            ...path,
+                            key,
+                            child.toString(),
+                        ]).forEach((d) => {
+                            res.push(d)
+                        })
                     }
-                } else {
-                    ASTDiff(rootOld, rootNew, [...path, key]).forEach((d) => {
-                        res.push(d)
-                    })
+
+                    child += 1
                 }
             } else {
-                if (valueNew !== valueOld && keyIgnore.indexOf(key) == -1) {
-                    res.push({
-                        path: [...path, key].join('/'),
-                        type: 'modified_value',
-                        node: 0,
-                    })
-                }
+                ASTDiff(rootOld, rootNew, keyIgnore, [...path, key]).forEach(
+                    (d) => {
+                        res.push(d)
+                    }
+                )
+            }
+        } else {
+            if (valOld != valNew) {
+                diff([...path, key])
             }
         }
     }
