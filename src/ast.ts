@@ -1,5 +1,5 @@
 import { spawnSync } from 'child_process'
-import { genRandomHex, getObjByPath } from './utils'
+import * as utils from './utils'
 import { options as OPT } from './main'
 import { exit } from 'process'
 import * as fs from 'fs'
@@ -44,7 +44,7 @@ export const getAST = (
         ast_count: 0,
         ast_object: {} as ASTNode,
     }
-    const filename = `temp/${genRandomHex(6)}.py`
+    const filename = `temp/${utils.genRandomHex(6)}.py`
     fs.writeFileSync(filename, code)
 
     let astProc = spawnSync(OPT.pythonBIN, [AST_SCRIPT_PATH, filename], {
@@ -63,20 +63,21 @@ export const getAST = (
     }
 }
 
-export const getASTNodeByPath = (
-    node: ASTNode,
+export const getMinASTNodeByPath = (
+    root: ASTNode,
     path: string | string[]
 ): ASTNode => {
-    for (const p of Array.isArray(path) ? path : path.split('/')) {
-        try {
-            node = node[p]
-        } catch (e) {
-            if (e instanceof TypeError) {
-                return undefined
-            } else {
-                throw e
-            }
+    let node: ASTNode = undefined
+    const _path: string[] = Array.isArray(path)
+        ? [...path]
+        : path.split(utils.SAPERATOR)
+    while (true) {
+        const _n = utils.get(root, _path)
+        if (typeof _n == 'object' && _n['node']) {
+            node = _n
+            break
         }
+        if (typeof _path.pop() == 'undefined') break
     }
     return node
 }
@@ -100,12 +101,18 @@ export const getASTNodeCnt = (obj: ASTNode | [ASTNode]): number => {
     return nodeCnt
 }
 
-type ASTModifyType = 'node_added' | 'node_deleted' | 'node_modified' | 'attr_added' | 'attr_deleted' | 'attr_modified'
+type ASTModifyType =
+    | 'node_added'
+    | 'node_deleted'
+    | 'node_modified'
+    | 'attr_added'
+    | 'attr_deleted'
+    | 'attr_modified'
 
 export type ASTDiffRes = {
     path: string
     type: ASTModifyType
-    delta: number
+    node_delta: number
 }
 
 export const ASTDiff = (
@@ -121,33 +128,37 @@ export const ASTDiff = (
 ): ASTDiffRes[] => {
     const res: ASTDiffRes[] = []
     const diff = (path: string[]) => {
-        const _old = getASTNodeByPath(rootOld, path)
-        const _new = getASTNodeByPath(rootNew, path)
-        const delta =
+        const _old = utils.get(rootOld, path)
+        const _new = utils.get(rootNew, path)
+        let delta =
             (_new ? getASTNodeCnt(_new) : 0) - (_old ? getASTNodeCnt(_old) : 0)
         let type: ASTModifyType
         if (_old && _new) {
             if (path[path.length - 1] == 'node') {
+                delta =
+                    getASTNodeCnt(getMinASTNodeByPath(rootNew, path)) -
+                    getASTNodeCnt(getMinASTNodeByPath(rootOld, path))
                 path.pop()
                 type = 'node_modified'
-            }else{
+            } else {
                 type = 'attr_modified'
             }
         } else if (!_new && !_old) {
-            return 
+            return
         } else if (!_new) {
             type = delta ? 'node_deleted' : 'attr_deleted'
         } else if (!_old) {
             type = delta ? 'node_added' : 'attr_added'
         }
         res.push({
-            path: path.join('/'),
+            path: path.join(utils.SAPERATOR),
             type,
-            delta,
+            node_delta: delta,
         })
     }
-    const localOld = getASTNodeByPath(rootOld, path)
-    const localNew = getASTNodeByPath(rootNew, path)
+    const localOld = getMinASTNodeByPath(rootOld, path)
+    const localNew = getMinASTNodeByPath(rootNew, path)
+    if (!localOld && !localNew) return res
     const keys = [...Object.keys(localNew), ...Object.keys(localOld)]
     for (let i = 0; keys[i]; i++) {
         for (let j = i + 1; keys[j]; ) {
@@ -187,6 +198,8 @@ export const ASTDiff = (
                         ]).forEach((d) => {
                             res.push(d)
                         })
+                    }else {
+                        diff([...path, key, child.toString()])
                     }
 
                     child += 1
