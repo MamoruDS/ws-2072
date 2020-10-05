@@ -15,6 +15,21 @@ def ast2json(node):
     def _format(node):
         if isinstance(node, AST):
             fields = [('node', _format(node.__class__.__name__))]
+            _attrs = ['lineno', 'col_offset']
+            try:
+                fields += [('lineno', node.lineno)]
+                fields += [('end_lineno', node.end_lineno)]
+                fields += [('col_offset', node.col_offset)]
+                fields += [('end_col_offset', node.end_col_offset)]
+            except:
+                pass
+            try:
+                fields += [('lineno', node.body[0].lineno)]
+                fields += [('end_lineno', node.body[0].end_lineno)]
+                fields += [('col_offset', node.body[0].col_offset)]
+                fields += [('end_col_offset', node.body[0].end_col_offset)]
+            except:
+                pass
             fields += [(a, _format(b)) for a, b in iter_fields(node)]
             global ast_count
             ast_count = ast_count + 1
@@ -22,6 +37,7 @@ def ast2json(node):
                 ('"%s": %s' % field for field in fields))
         if isinstance(node, list):
             return '[ %s ]' % ', '.join([_format(x) for x in node])
+        node = str(node)
         return json.dumps(node)
 
     return _format(node)
@@ -36,6 +52,9 @@ def iter_fields(node):
 
 
 def astParse():
+    if sys.version_info.major != 3:
+        sys.stderr.write(json.dumps({'errType': 'PY_VER'}) + '\n')
+        sys.exit(1)
     inputfile = sys.argv[1]
     f = open(inputfile, 'r')
     src = f.read()
@@ -43,9 +62,9 @@ def astParse():
         parsed = ast.parse(src)
         ast_json = ast2json(parsed)
         global ast_count
-        sys.stdout.write('{{ "ast_count": {}, "ast_json": {} }}'.format(ast_count, ast_json))
+        sys.stdout.write('{{ "ast_count": {}, "ast_json": {} }}\n'.format(ast_count, ast_json))
     except:
-        sys.stderr.write('[ERR] parse error')
+        sys.stderr.write(json.dumps({'errType': 'AST_PARSE'}) + '\n')
         sys.exit(1)
     sys.exit(0)
 
