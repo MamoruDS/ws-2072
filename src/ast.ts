@@ -382,6 +382,8 @@ export const ASTDiffAlt = (
             if (lhs.node == 'Expr') {
                 if (lhs['value']['func']['id'] == rhs['value']['func']['id']) {
                     return true
+                } else {
+                    return false
                 }
             }
             if (lhs.node == 'Assign') {
@@ -452,7 +454,6 @@ export const ASTDiffAlt = (
                 astEqual,
                 astSimilar
             )
-            console.log(diff)
             diff.forEach((_j) => {
                 if (_j['oi'] == null) {
                     diffRes.push({
