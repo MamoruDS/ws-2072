@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { options as OPT } from './main'
+import { OPT } from './main'
 
 const parseGitPatch = require('parse-git-patch')
 

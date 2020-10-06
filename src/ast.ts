@@ -1,6 +1,6 @@
 import { spawnSync } from 'child_process'
 import * as utils from './utils'
-import { options as OPT } from './main'
+import { OPT } from './main'
 import { exit } from 'process'
 import * as fs from 'fs'
 import * as path from 'path'
