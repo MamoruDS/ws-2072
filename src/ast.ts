@@ -110,6 +110,38 @@ export const getMinASTNodeByPath = (
     return node
 }
 
+const isScopeNodePath = (path: string | string[]): boolean => {
+    const _path: string[] = Array.isArray(path)
+        ? [...path]
+        : path.split(utils.SAPERATOR)
+    if (
+        _path[_path.length - 2] == 'body' &&
+        !Number.isNaN(parseInt(_path[_path.length - 1]))
+    )
+        return true
+    return false
+}
+
+export const getMinScopePath = (
+    root: ASTNode,
+    path: string | string[]
+    // fix: number = 0
+): string[] => {
+    const _path: string[] = Array.isArray(path)
+        ? [...path]
+        : path.split(utils.SAPERATOR)
+    while (_path.length) {
+        if (
+            isScopeNodePath(_path) &&
+            typeof utils.get(root, _path) != 'undefined'
+        ) {
+            break
+        }
+        _path.pop()
+    }
+    return _path
+}
+
 export const getASTNodeInfo = (node: ASTNode): NodeInfo => {
     const info: NodeInfo = {
         nodeCnt: node['node'] ? 1 : 0,
