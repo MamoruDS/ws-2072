@@ -80,7 +80,11 @@ export const getChanges = <T>(
     o = 0
     while (typeof _old[o] != 'undefined') {
         const target: 'oi' | 'ni' = 'oi'
-        n = jt.length ? getJTEdgeIndex(jt, 'ni', true) + 1 : 0
+        n = jt.filter((_j) => {
+            return _j.ni != null
+        }).length
+            ? getJTEdgeIndex(jt, 'ni', true) + 1
+            : 0
         if (o != 0 && isEqual(_old[o], _old[o - 1])) {
             jt.unshift({
                 oi: o,
@@ -113,7 +117,14 @@ export const getChanges = <T>(
     n = 0
     while (typeof _new[n] != 'undefined') {
         const target: 'oi' | 'ni' = 'ni'
-        o = n == 0 ? 0 : jt.length ? getJTEdgeIndex(jt, 'oi', true) : 0
+        o =
+            n == 0
+                ? 0
+                : jt.filter((_j) => {
+                      return _j['oi'] != null
+                  }).length
+                ? getJTEdgeIndex(jt, 'oi', true)
+                : 0
         let added = false
         while (typeof _old[o] != 'undefined') {
             if (isSimilar(_old[o], _new[n])) {
@@ -131,8 +142,7 @@ export const getChanges = <T>(
         }
         do {
             n += 1
-        }
-        while (existInJT(jt, target, n))
+        } while (existInJT(jt, target, n))
     }
     jt.sort((a, b) => {
         return a['oi'] - b['oi']
