@@ -16,6 +16,16 @@ const KEY_IGNORE: string[] = [
     'end_col_offset',
 ]
 
+const rmIgnoreKey = <T extends object>(input: T): T => {
+    const re = new RegExp(
+        `((${KEY_IGNORE.map((key) => {
+            return `("${key}")`
+        }).join('|')}):\\s{0,}\\d+,{0,})`,
+        'gm'
+    )
+    return JSON.parse(JSON.stringify(input).replace(re, ''))
+}
+
 const AST_SCRIPT_PATH = path.join(
     path.dirname(__dirname),
     'scripts',
@@ -39,7 +49,14 @@ type ASTNode = {
     node: string
     lineno?: number
     end_lineno?: number
+    test?: {
+        node: string
+        left: {
+            node: string
+        }
+    }
     body?: ASTNode[]
+    orelse?: ASTNode[]
     value?: {
         func?: {
             id?: string
@@ -351,7 +368,10 @@ export const getMinASTDiff = (
 
 export const ASTDiffAlt = (
     rootOld: ASTNode,
-    rootNew: ASTNode
+    rootNew: ASTNode,
+    options: {
+        strictIfConditionCheck?: boolean
+    } = {}
     // ASTDiff: ASTDiffRes[]
 ) => {
     // const checked: string[] = []
@@ -380,7 +400,17 @@ export const ASTDiffAlt = (
                     )
                     return true
                 } catch (e) {
-                    console.log(e)
+                    return false
+                }
+            }
+            if (lhs.node == 'If' && options.strictIfConditionCheck) {
+                try {
+                    deepStrictEqual(
+                        rmIgnoreKey(lhs['test']),
+                        rmIgnoreKey(rhs['test'])
+                    )
+                    return true
+                } catch (e) {
                     return false
                 }
             }
@@ -397,8 +427,8 @@ export const ASTDiffAlt = (
                 }).join('|')}):\\s{0,}\\d+,{0,})`,
                 'gm'
             )
-            const _lhs = JSON.parse(JSON.stringify(lhs).replace(re, ''))
-            const _rhs = JSON.parse(JSON.stringify(rhs).replace(re, ''))
+            const _lhs = rmIgnoreKey(lhs)
+            const _rhs = rmIgnoreKey(rhs)
             try {
                 deepStrictEqual(_lhs, _rhs)
                 res = true
@@ -452,6 +482,23 @@ export const ASTDiffAlt = (
                         pending.push({
                             old: [...body['old'], _j['oi'].toString(), 'body'],
                             new: [...body['new'], _j['ni'].toString(), 'body'],
+                        })
+                    }
+                    if (
+                        Array.isArray(_oldChild['orelse']) &&
+                        Array.isArray(_newChild['orelse'])
+                    ) {
+                        pending.push({
+                            old: [
+                                ...body['old'],
+                                _j['oi'].toString(),
+                                'orelse',
+                            ],
+                            new: [
+                                ...body['new'],
+                                _j['ni'].toString(),
+                                'orelse',
+                            ],
                         })
                     } else {
                         diffRes.push({
