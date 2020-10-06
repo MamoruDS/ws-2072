@@ -304,3 +304,47 @@ export const ASTDiff = (
     }
     return res
 }
+export const getMinASTDiff = (
+    rootOld: ASTNode,
+    rootNew: ASTNode,
+    ASTDiff: ASTDiffRes[]
+) => {
+    const checked: {
+        [path: string]: { added: number; deleted: number }
+    } = {}
+    for (const diff of ASTDiff) {
+        if (diff.type.substr(0, 4) == 'attr') {
+            continue
+        }
+        if (!isScopeNodePath(diff.path)) {
+            continue
+        }
+        // TODO: path[0]
+        const body: string = diff.path[0]
+            .split(utils.SAPERATOR)
+            .slice(0, -1)
+            .join(utils.SAPERATOR)
+        if (!checked[body]) {
+            checked[body] = {
+                added: 0,
+                deleted: 0,
+            }
+        }
+        switch (diff.type) {
+            case 'node_modified': {
+                checked[body]['added'] += 1
+                checked[body]['deleted'] += 1
+                break
+            }
+            case 'node_added': {
+                checked[body]['added'] += 1
+                break
+            }
+            case 'node_deleted': {
+                checked[body]['deleted'] += 1
+                break
+            }
+        }
+    }
+    return checked
+}
