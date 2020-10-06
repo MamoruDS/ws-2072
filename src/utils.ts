@@ -62,13 +62,13 @@ export const getChanges = <T>(
         max?: boolean
     ): number => {
         let m = max ? 0 : Infinity
-        arr.forEach((jt) => {
+        arr.forEach((_j) => {
             m = max
-                ? jt[target] > m
-                    ? jt[target]
+                ? _j[target] > m
+                    ? _j[target]
                     : m
-                : jt[target] < m
-                ? jt[target]
+                : _j[target] < m
+                ? _j[target]
                 : m
         })
         return m
@@ -129,9 +129,10 @@ export const getChanges = <T>(
                 ni: n,
             })
         }
-        while (existInJT(jt, target, n)) {
+        do {
             n += 1
         }
+        while (existInJT(jt, target, n))
     }
     jt.sort((a, b) => {
         return a['oi'] - b['oi']
