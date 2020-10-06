@@ -348,3 +348,143 @@ export const getMinASTDiff = (
     }
     return checked
 }
+
+export const ASTDiffAlt = (
+    rootOld: ASTNode,
+    rootNew: ASTNode
+    // ASTDiff: ASTDiffRes[]
+) => {
+    // const checked: string[] = []
+    const pending: { old: string[]; new: string[] }[] = []
+    const diffRes: ASTDiffRes[] = []
+    const astSimilar = (lhs: ASTNode, rhs: ASTNode) => {
+        if (lhs.node == rhs.node) {
+            if (lhs.node == 'Expr') {
+                if (lhs['value']['func']['id'] == rhs['value']['func']['id']) {
+                    return true
+                }
+            }
+            if (lhs.node == 'Assign') {
+                try {
+                    deepStrictEqual(
+                        lhs['targets'].map((n) => {
+                            return {
+                                id: n['id'],
+                            }
+                        }),
+                        rhs['targets'].map((n) => {
+                            return {
+                                id: n['id'],
+                            }
+                        })
+                    )
+                    return true
+                } catch (e) {
+                    console.log(e)
+                    return false
+                }
+            }
+            return true
+        }
+        return false
+    }
+    const astEqual = (lhs: ASTNode, rhs: ASTNode) => {
+        let res = false
+        if (lhs.node == rhs.node) {
+            const re = new RegExp(
+                `((${KEY_IGNORE.map((key) => {
+                    return `("${key}")`
+                }).join('|')}):\\s{0,}\\d+,{0,})`,
+                'gm'
+            )
+            const _lhs = JSON.parse(JSON.stringify(lhs).replace(re, ''))
+            const _rhs = JSON.parse(JSON.stringify(rhs).replace(re, ''))
+            try {
+                deepStrictEqual(_lhs, _rhs)
+                res = true
+            } catch {}
+        }
+        return res
+    }
+    // TODO: ASTDiff filter
+    pending.push({
+        old: ['body'],
+        new: ['body'],
+    })
+    while (pending.length) {
+        const body = pending.shift()
+        const _oldBody = utils.get(rootOld, body['old']) as ASTNode[]
+        const _newBody = utils.get(rootNew, body['new']) as ASTNode[]
+        if (typeof _oldBody != 'undefined' && typeof _newBody != 'undefined') {
+            const diff = utils.getChanges<ASTNode>(
+                _oldBody,
+                _newBody,
+                astEqual,
+                astSimilar
+            )
+            console.log(diff)
+            diff.forEach((_j) => {
+                if (_j['oi'] == null) {
+                    diffRes.push({
+                        path: [
+                            undefined,
+                            [...body['new'], _j['ni']].join(utils.SAPERATOR),
+                        ],
+                        type: 'node_added',
+                        node_delta: 0,
+                    })
+                } else if (_j['ni'] == null) {
+                    diffRes.push({
+                        path: [
+                            [...body['old'], _j['oi']].join(utils.SAPERATOR),
+                            undefined,
+                        ],
+                        type: 'node_deleted',
+                        node_delta: 0,
+                    })
+                } else if (_j['mod']) {
+                    const _oldChild = _oldBody[_j['oi']]
+                    const _newChild = _newBody[_j['ni']]
+                    if (
+                        Array.isArray(_oldChild['body']) &&
+                        Array.isArray(_newChild['body'])
+                    ) {
+                        pending.push({
+                            old: [...body['old'], _j['oi'].toString(), 'body'],
+                            new: [...body['new'], _j['ni'].toString(), 'body'],
+                        })
+                    } else {
+                        diffRes.push({
+                            path: [
+                                [...body['old'], _j['oi']].join(
+                                    utils.SAPERATOR
+                                ),
+                                [...body['new'], _j['ni']].join(
+                                    utils.SAPERATOR
+                                ),
+                            ],
+                            type: 'node_modified',
+                            node_delta: 0,
+                        })
+                    }
+                }
+            })
+        }
+    }
+    diffRes.forEach((res) => {
+        const _default: NodeInfo = {
+            nodeCnt: 0,
+            topLineNr: undefined,
+            botLineNr: undefined,
+        }
+        const infOld = res.path[0]
+            ? getASTNodeInfo(utils.get(rootOld, res.path[0]))
+            : { ..._default }
+        const infNew = res.path[1]
+            ? getASTNodeInfo(utils.get(rootNew, res.path[1]))
+            : { ..._default }
+        const delta = infNew.nodeCnt - infOld.nodeCnt
+        res.node_delta = delta
+    })
+    return diffRes
+}
