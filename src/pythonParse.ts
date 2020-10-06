@@ -194,7 +194,7 @@ export class PyCode {
 
         if (DEBUG) {
             console.log('---------------------------------------')
-            console.log('|             findScopeCL             |')
+            console.log(`|         findScopeCL new: ${tN ? 1 : 0}          |`)
             console.log('---------------------------------------')
             console.log(`> [INF] start  lineNr: ${startLine.lineNr}`)
             console.log(`> [INF] start  indent: ${startLine.indent}`)
@@ -224,7 +224,7 @@ export class PyCode {
                     break
                 }
             }
-            if(_line.indent < targetScope) {
+            if (_line.indent < targetScope) {
                 break
             }
             i += lineFix
@@ -321,6 +321,18 @@ export class PyCode {
         }
         return undefined
     }
+    genCode = (tN: boolean) => {
+        const codelines = this.getCL(tN)
+        const code: string[] = []
+        let localMinFix: number = Infinity
+        codelines.map((line) => {
+            localMinFix = localMinFix >= line.indent ? line.indent : localMinFix
+        })
+        codelines.map((line) => {
+            code.push(' '.repeat((line.indent - localMinFix) * 4) + line.code)
+        })
+        return code.join('\n')
+    }
     genCodeSnip = (
         tN: boolean,
         beginIndex: number,
@@ -330,11 +342,9 @@ export class PyCode {
         const codelines = this.slice(tN, beginIndex, endIndex)
         const code: string[] = []
         let localMinFix: number = Infinity
-
         codelines.map((line) => {
             localMinFix = localMinFix >= line.indent ? line.indent : localMinFix
         })
-
         if (codelines[0].indent > localMinFix)
             throw new Error(
                 'pythonParse.genCodeSnip: snip top at local min scope'
