@@ -5,7 +5,16 @@ import { exit } from 'process'
 import * as fs from 'fs'
 import * as path from 'path'
 
+import { deepStrictEqual } from 'assert'
+
 const TEMP_PATH = 'temp'
+
+const KEY_IGNORE: string[] = [
+    'lineno',
+    'end_lineno',
+    'col_offset',
+    'end_col_offset',
+]
 
 const AST_SCRIPT_PATH = path.join(
     path.dirname(__dirname),
@@ -30,6 +39,25 @@ type ASTNode = {
     node: string
     lineno?: number
     end_lineno?: number
+    body?: ASTNode[]
+    value?: {
+        func?: {
+            id?: string
+        }
+    }
+    targets?: {
+        node: string
+        id: string
+        ctx: {
+            node: string
+        }
+    }[]
+}
+
+type NodeInfo = {
+    nodeCnt: number
+    topLineNr: number
+    botLineNr: number
 }
 
 export const getAST = (
@@ -82,6 +110,36 @@ export const getMinASTNodeByPath = (
     return node
 }
 
+export const getASTNodeInfo = (node: ASTNode): NodeInfo => {
+    const info: NodeInfo = {
+        nodeCnt: node['node'] ? 1 : 0,
+        topLineNr: node['lineno'],
+        botLineNr: node['end_lineno'],
+    }
+    const _mergeInfo = (_inf: NodeInfo) => {
+        info.nodeCnt += _inf.nodeCnt
+        if (info.topLineNr > _inf.topLineNr) {
+            info.topLineNr = _inf.topLineNr
+        }
+        if (info.botLineNr < _inf.botLineNr) {
+            info.botLineNr = _inf.botLineNr
+        }
+    }
+    for (const key of Object.keys(node)) {
+        const val = node[key]
+        if (typeof val == 'object' && val != null) {
+            if (Array.isArray(val)) {
+                for (const item of val) {
+                    _mergeInfo(getASTNodeInfo(item))
+                }
+            } else {
+                _mergeInfo(getASTNodeInfo(val))
+            }
+        }
+    }
+    return info
+}
+
 export const getASTNodeCnt = (obj: ASTNode | [ASTNode]): number => {
     let nodeCnt = 0
     if (obj['node']) {
@@ -110,7 +168,7 @@ type ASTModifyType =
     | 'attr_modified'
 
 export type ASTDiffRes = {
-    path: string
+    path: [string, string]
     type: ASTModifyType
     node_delta: number
 }
@@ -118,12 +176,7 @@ export type ASTDiffRes = {
 export const ASTDiff = (
     rootOld: ASTNode,
     rootNew: ASTNode,
-    keyIgnore: string[] = [
-        'lineno',
-        'end_lineno',
-        'col_offset',
-        'end_col_offset',
-    ],
+    keyIgnore: string[] = KEY_IGNORE,
     path: string[] = []
 ): ASTDiffRes[] => {
     const res: ASTDiffRes[] = []
@@ -151,7 +204,7 @@ export const ASTDiff = (
             type = delta ? 'node_added' : 'attr_added'
         }
         res.push({
-            path: path.join(utils.SAPERATOR),
+            path: [path.join(utils.SAPERATOR), path.join(utils.SAPERATOR)],
             type,
             node_delta: delta,
         })
@@ -198,7 +251,7 @@ export const ASTDiff = (
                         ]).forEach((d) => {
                             res.push(d)
                         })
-                    }else {
+                    } else {
                         diff([...path, key, child.toString()])
                     }
 
