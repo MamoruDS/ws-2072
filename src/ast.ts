@@ -71,8 +71,10 @@ type ASTNode = {
     }[]
 }
 
+type NodeCount = number | null
+
 type NodeInfo = {
-    nodeCnt: number
+    nodeCnt: NodeCount
     topLineNr: number
     botLineNr: number
 }
@@ -219,7 +221,10 @@ type ASTModifyType =
 export type ASTDiffRes = {
     path: [string, string]
     type: ASTModifyType
-    node_delta: number
+    nodeCnt?: [NodeCount, NodeCount]
+    nodeDelta?: number
+    topLineNr?: [number, number]
+    botLineNr?: [number, number]
 }
 
 export const ASTDiff = (
@@ -255,7 +260,7 @@ export const ASTDiff = (
         res.push({
             path: [path.join(utils.SAPERATOR), path.join(utils.SAPERATOR)],
             type,
-            node_delta: delta,
+            nodeDelta: delta,
         })
     }
     const localOld = getMinASTNodeByPath(rootOld, path)
@@ -462,7 +467,6 @@ export const ASTDiffAlt = (
                             [...body['new'], _j['ni']].join(utils.SAPERATOR),
                         ],
                         type: 'node_added',
-                        node_delta: 0,
                     })
                 } else if (_j['ni'] == null) {
                     diffRes.push({
@@ -471,7 +475,6 @@ export const ASTDiffAlt = (
                             undefined,
                         ],
                         type: 'node_deleted',
-                        node_delta: 0,
                     })
                 } else if (_j['mod']) {
                     const _oldChild = _oldBody[_j['oi']]
@@ -512,7 +515,6 @@ export const ASTDiffAlt = (
                                 ),
                             ],
                             type: 'node_modified',
-                            node_delta: 0,
                         })
                     }
                 }
@@ -521,7 +523,7 @@ export const ASTDiffAlt = (
     }
     diffRes.forEach((res) => {
         const _default: NodeInfo = {
-            nodeCnt: 0,
+            nodeCnt: null,
             topLineNr: undefined,
             botLineNr: undefined,
         }
@@ -531,8 +533,38 @@ export const ASTDiffAlt = (
         const infNew = res.path[1]
             ? getASTNodeInfo(utils.get(rootNew, res.path[1]))
             : { ..._default }
-        const delta = infNew.nodeCnt - infOld.nodeCnt
-        res.node_delta = delta
+        res.nodeCnt = [infOld.nodeCnt, infNew.nodeCnt]
+        res.nodeDelta = infNew.nodeCnt - infOld.nodeCnt
+        res.topLineNr = [infOld.topLineNr, infNew.topLineNr]
+        res.botLineNr = [infOld.botLineNr, infNew.botLineNr]
+        if (res.type == 'node_modified') {
+            let _type: ASTModifyType
+            const _old = utils.get(rootOld, res.path[0])
+            const _new = utils.get(rootNew, res.path[1])
+            for (const key of Object.keys(_old)) {
+                if (typeof _new[key] != 'undefined') {
+                    try {
+                        deepStrictEqual(_old[key], _new[key])
+                    } catch (e) {
+                        _type = 'attr_modified'
+                    }
+                } else {
+                    _type = _type == 'attr_modified' ? 'attr_deleted' : _type
+                }
+            }
+            for (const key of Object.keys(_new)) {
+                if (typeof _old[key] != 'undefined') {
+                    try {
+                        deepStrictEqual(_old[key], _new[key])
+                    } catch (e) {
+                        _type = 'attr_modified'
+                    }
+                } else {
+                    _type = _type == 'attr_modified' ? 'attr_added' : _type
+                }
+            }
+            res.type = _type
+        }
     })
     return diffRes
 }
