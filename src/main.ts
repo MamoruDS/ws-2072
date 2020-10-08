@@ -5,9 +5,11 @@ import { getAST, ASTDiffAlt, ASTDiffRes } from './ast'
 const options = {
     githubToken: undefined,
     pythonBIN: 'python',
+    strictIfConditionCheck: true,
 } as {
     githubToken: string
     pythonBIN: string
+    strictIfConditionCheck: boolean
 }
 
 const loadFromSnip = (snipOld: string, snipNew: string): CodeDiff => {
@@ -49,7 +51,10 @@ const loadPatchFile = (file: PatchFile, commitURL?: string): CodeDiff => {
     const codeNew = pyCode.genCode(true)
     const diff = ASTDiffAlt(
         getAST(codeOld)['ast_object'],
-        getAST(codeNew)['ast_object']
+        getAST(codeNew)['ast_object'],
+        {
+            strictIfConditionCheck: options.strictIfConditionCheck,
+        }
     )
     return {
         url: commitURL,
