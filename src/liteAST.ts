@@ -1,0 +1,3 @@
+class LiteAST {}
+
+export { LiteAST }
