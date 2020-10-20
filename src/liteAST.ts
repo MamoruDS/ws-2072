@@ -353,8 +353,7 @@ const _loadFromAST = (
     } else if (_t == 'If') {
         prop.type = 'flow'
     } else if (_t == 'Index') {
-        // TODO: change subscirpt to slice or something else
-        prop.type = 'subscript'
+        prop.type = 'index'
         _loadFromAST(node['value'], prop.this, {
             tag: 'body',
         })
