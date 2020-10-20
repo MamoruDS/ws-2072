@@ -291,13 +291,12 @@ const _loadFromAST = (
     } else if (_t == 'Assert') {
         prop.type = 'reserved'
         prop.value = 'assert'
+        prop.hasChild = false
         _loadFromAST(node['test'], prop.this, {
             tag: 'body',
         })
-        prop.hasChild = false
     } else if (_t == 'Assign') {
         prop.type = 'assign'
-        prop.value = null
         prop.hasChild = false
         _loadFromAST(node['targets'][0], prop.this, {
             tag: 'lhs',
@@ -307,9 +306,9 @@ const _loadFromAST = (
         })
     } else if (_t == 'Attribute') {
         prop.type = 'path'
+        prop.hasChild = false
         prop.node = getExprPath(node)
         if (father) father.appendChild('child', prop.node, inf.appendAtBegin)
-        prop.hasChild = false
     } else if (_t == 'BinOp') {
         prop.type = 'expression'
         _loadFromAST(node['left'], prop.this, {
@@ -340,11 +339,12 @@ const _loadFromAST = (
         })
     } else if (_t == 'Call') {
         prop.type = 'path'
+        prop.hasChild = false
         prop.node = getExprPath(node)
         if (father) father.appendChild('child', prop.node, inf.appendAtBegin)
-        prop.hasChild = false
     } else if (_t == 'Compare') {
         prop.type = 'expression'
+        prop.hasChild = false
         _loadFromAST(node['left'], prop.this, {
             tag: 'lhs',
         })
@@ -355,7 +355,6 @@ const _loadFromAST = (
         _loadFromAST(node['comparators'][0], prop.this, {
             tag: 'rhs',
         })
-        prop.hasChild = false
     } else if (_t == 'Constant') {
         prop.type = 'constant'
         prop.value = node['value']
@@ -376,12 +375,15 @@ const _loadFromAST = (
         prop.type = 'function'
     } else if (_t == 'If') {
         prop.type = 'flow'
+        _loadFromAST(node['test'], prop.this, {
+            tag: 'body',
+        })
     } else if (_t == 'Index') {
         prop.type = 'index'
+        prop.hasChild = false
         _loadFromAST(node['value'], prop.this, {
             tag: 'body',
         })
-        prop.hasChild = false
     } else if (_t == 'Module') {
         prop.type = 'document'
     } else if (_t == 'Name') {
@@ -395,11 +397,18 @@ const _loadFromAST = (
         prop.type = 'operator'
         prop.value = 'boolOr'
         prop.hasChild = false
+    } else if (_t == 'Pass') {
+        prop.type = 'reserved'
+        prop.value = 'pass'
+        prop.hasChild = false
     } else if (_t == 'Return') {
         prop.type = 'reserved'
+        prop.hasChild = false
+        _loadFromAST(node['value'], prop.this, {
+            tag: 'body',
+        })
     } else if (_t == 'Tuple') {
         prop.type = 'tuple'
-        prop.value = null
         for (const _item of node['elts']) {
             _loadFromAST(_item, prop.this, {
                 tag: 'child',
@@ -408,10 +417,10 @@ const _loadFromAST = (
     } else if (_t == 'keyword') {
         prop.type = 'keyword'
         prop.value = node['arg']
+        prop.hasChild = false
         _loadFromAST(node['value'], prop.this, {
             tag: 'body',
         })
-        prop.hasChild = false
     }
     if (!prop.node) {
         prop.node = createLiteNode(prop.type, prop.value, father, {
