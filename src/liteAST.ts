@@ -179,6 +179,10 @@ const getExprPath = (node: ASTNode): LiteNode => {
     const path = new LiteNode('path')
     let _i = 0
     while (_i < 1000) {
+        const called = node['called']
+        const keywords = node['keywords']
+        const args = node['args']
+        let _cur: LiteNode = undefined
         if (node['node'] == 'Call') {
             node = {
                 ...node['func'],
@@ -187,7 +191,7 @@ const getExprPath = (node: ASTNode): LiteNode => {
                 keywords: node['keywords'],
             }
         } else if (node['node'] == 'Attribute') {
-            const _called = createLiteNode(
+            _cur = createLiteNode(
                 node['called'] ? 'called' : 'variable',
                 node['attr'],
                 path,
@@ -197,20 +201,6 @@ const getExprPath = (node: ASTNode): LiteNode => {
                     appendAtBegin: true,
                 }
             )
-            if (node['called'] && Array.isArray(node['args'])) {
-                for (const _arg of node['args']) {
-                    _loadFromAST(_arg, _called, {
-                        tag: 'args',
-                    })
-                }
-            }
-            if (node['called'] && Array.isArray(node['keywords'])) {
-                for (const _arg of node['keywords']) {
-                    _loadFromAST(_arg, _called, {
-                        tag: 'args',
-                    })
-                }
-            }
             node = node['value']
         } else if (node['node'] == 'Subscript') {
             const _type = node['slice'] ? 'slice' : undefined
@@ -225,12 +215,26 @@ const getExprPath = (node: ASTNode): LiteNode => {
             }
             node = { ...node['value'] }
         } else if (node['node'] == 'Name') {
-            createLiteNode('variable', node['id'], path, {
+            _cur = createLiteNode('variable', node['id'], path, {
                 // TODO: change tag
                 tag: 'child',
                 appendAtBegin: true,
             })
-            break
+            _i += 9999
+        }
+        if (called && Array.isArray(args)) {
+            for (const _arg of args) {
+                _loadFromAST(_arg, _cur, {
+                    tag: 'args',
+                })
+            }
+        }
+        if (called && Array.isArray(keywords)) {
+            for (const _arg of keywords) {
+                _loadFromAST(_arg, _cur, {
+                    tag: 'args',
+                })
+            }
         }
         _i += 1
     }
