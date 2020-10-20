@@ -284,6 +284,10 @@ const _loadFromAST = (
         prop.type = 'operator'
         prop.value = 'add'
         prop.hasChild = false
+    } else if (_t == 'And') {
+        prop.type = 'operator'
+        prop.value = 'boolAnd'
+        prop.hasChild = false
     } else if (_t == 'Assert') {
         prop.type = 'reserved'
         prop.value = 'assert'
@@ -318,6 +322,22 @@ const _loadFromAST = (
             tag: 'rhs',
         })
         prop.hasChild = false
+    } else if (_t == 'BitAnd') {
+        prop.type = 'operator'
+        prop.value = 'bitand'
+        prop.hasChild = false
+    } else if (_t == 'BoolOp') {
+        prop.type = 'expression'
+        prop.hasChild = false
+        _loadFromAST(node['values'][0], prop.this, {
+            tag: 'lhs',
+        })
+        _loadFromAST(node['op'], prop.this, {
+            tag: 'op',
+        })
+        _loadFromAST(node['values'][1], prop.this, {
+            tag: 'rhs',
+        })
     } else if (_t == 'Call') {
         prop.type = 'path'
         prop.node = getExprPath(node)
@@ -367,6 +387,14 @@ const _loadFromAST = (
     } else if (_t == 'Name') {
         prop.type = 'variable'
         prop.value = node['id']
+    } else if (_t == 'NotEq') {
+        prop.type = 'operator'
+        prop.value = 'notEqual'
+        prop.hasChild = false
+    } else if (_t == 'Or') {
+        prop.type = 'operator'
+        prop.value = 'boolOr'
+        prop.hasChild = false
     } else if (_t == 'Return') {
         prop.type = 'reserved'
     } else if (_t == 'Tuple') {
