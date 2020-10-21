@@ -6,16 +6,18 @@ import { ASTNode } from './ast'
 class LiteAST {}
 
 type NodeType =
+    | 'argument'
     | 'assign'
     | 'called'
     | 'class'
+    | 'condition'
     | 'constant'
     | 'document'
     | 'expression'
-    | 'flow'
     | 'function'
     | 'index'
     | 'keyword'
+    | 'loop'
     | 'operator'
     | 'path'
     | 'reserved'
@@ -24,7 +26,19 @@ type NodeType =
     | 'variable'
 type ASTField = 'body' | 'orelse' | 'args'
 
-type Tag = 'child' | 'lhs' | 'rhs' | 'op' | 'args' | 'body'
+type Tag =
+    | 'child'
+    | 'lhs'
+    | 'rhs'
+    | 'op'
+    | 'arg'
+    | 'body'
+    | 'base'
+    | 'dim'
+    | 'lower'
+    | 'upper'
+    | 'step'
+    | 'target'
 
 type TagChild = {
     tag: Tag
@@ -225,14 +239,14 @@ const getExprPath = (node: ASTNode): LiteNode => {
         if (called && Array.isArray(args)) {
             for (const _arg of args) {
                 _loadFromAST(_arg, _cur, {
-                    tag: 'args',
+                    tag: 'arg',
                 })
             }
         }
         if (called && Array.isArray(keywords)) {
             for (const _arg of keywords) {
                 _loadFromAST(_arg, _cur, {
-                    tag: 'args',
+                    tag: 'arg',
                 })
             }
         }
@@ -263,7 +277,6 @@ const _loadFromAST = (
         appendAtBegin?: boolean
     } = {}
 ): LiteNode => {
-    const _fields: ASTField[] = ['body', 'orelse', 'args']
     const prop = {
         value: null,
         tag: inf.tag,
@@ -277,6 +290,7 @@ const _loadFromAST = (
         tag: Tag
         this: LiteNode
     }
+    if (typeof node == 'string') return
     const _t = node['node']
 
     if (false) {
@@ -311,6 +325,7 @@ const _loadFromAST = (
         if (father) father.appendChild('child', prop.node, inf.appendAtBegin)
     } else if (_t == 'BinOp') {
         prop.type = 'expression'
+        prop.hasChild = false
         _loadFromAST(node['left'], prop.this, {
             tag: 'lhs',
         })
@@ -320,7 +335,6 @@ const _loadFromAST = (
         _loadFromAST(node['right'], prop.this, {
             tag: 'rhs',
         })
-        prop.hasChild = false
     } else if (_t == 'BitAnd') {
         prop.type = 'operator'
         prop.value = 'bitand'
@@ -337,11 +351,24 @@ const _loadFromAST = (
         _loadFromAST(node['values'][1], prop.this, {
             tag: 'rhs',
         })
+    } else if (_t == 'Break') {
+        prop.type = 'reserved'
+        prop.hasChild = false
     } else if (_t == 'Call') {
         prop.type = 'path'
         prop.hasChild = false
         prop.node = getExprPath(node)
         if (father) father.appendChild('child', prop.node, inf.appendAtBegin)
+    } else if (_t == 'ClassDef') {
+        prop.type = 'class'
+        prop.value = node['name']
+        prop.hasChild = true
+        // TODO: extends keywords?
+        for (const _b of node['bases']) {
+            _loadFromAST(_b, prop.this, {
+                tag: 'base',
+            })
+        }
     } else if (_t == 'Compare') {
         prop.type = 'expression'
         prop.hasChild = false
@@ -359,6 +386,10 @@ const _loadFromAST = (
         prop.type = 'constant'
         prop.value = node['value']
         prop.hasChild = false
+    } else if (_t == 'Continue') {
+        prop.type = 'reserved'
+        prop.value = 'continue'
+        prop.hasChild = false
     } else if (_t == 'Div') {
         prop.type = 'operator'
         prop.value = 'division'
@@ -369,26 +400,76 @@ const _loadFromAST = (
         prop.hasChild = false
     } else if (_t == 'Expr') {
         prop.node = _loadFromAST(node['value'], father, inf)
+    } else if (_t == 'ExtSlice') {
+        prop.type = 'index'
+        prop.value = 'extSlice'
+        prop.hasChild = false
+        for (const _d of node['dims']) {
+            _loadFromAST(_d, prop.this, {
+                tag: 'dim',
+            })
+        }
     } else if (_t == 'For') {
-        prop.type = 'flow'
+        prop.type = 'loop'
+        prop.hasChild = true
+        // TODO: better option
+        _loadFromAST(node['target'], prop.this, {
+            tag: 'target',
+        })
+        _loadFromAST(node['iter'], prop.this, {
+            tag: 'body',
+        })
+    } else if (_t == 'FormattedValue') {
+        // TODO:
     } else if (_t == 'FunctionDef') {
         prop.type = 'function'
+        prop.value = node['name']
+        prop.hasChild = true
+        if (!Array.isArray(node['args'])) {
+            const _arguments = node['args']
+            if (Array.isArray(_arguments['args'])) {
+                for (const _i in _arguments['args']) {
+                    const _arg = createLiteNode(
+                        'argument',
+                        _arguments['args'].slice().reverse()[_i]['arg'],
+                        prop.this,
+                        {
+                            tag: 'arg',
+                            appendAtBegin: true,
+                        }
+                    )
+                    // TODO: alternative tag: default
+                    const _default = _arguments['defaults'] //
+                        .slice()
+                        .reverse()[_i]
+                    if (_default) {
+                        _loadFromAST(_default, _arg, {
+                            tag: 'body',
+                        })
+                    }
+                }
+            }
+        }
     } else if (_t == 'If') {
-        prop.type = 'flow'
+        prop.type = 'condition'
+        prop.hasChild = true
         _loadFromAST(node['test'], prop.this, {
             tag: 'body',
         })
     } else if (_t == 'Index') {
         prop.type = 'index'
+        prop.value = 'index'
         prop.hasChild = false
         _loadFromAST(node['value'], prop.this, {
             tag: 'body',
         })
     } else if (_t == 'Module') {
         prop.type = 'document'
+        prop.hasChild = true
     } else if (_t == 'Name') {
         prop.type = 'variable'
         prop.value = node['id']
+        prop.hasChild = false
     } else if (_t == 'NotEq') {
         prop.type = 'operator'
         prop.value = 'notEqual'
@@ -407,6 +488,22 @@ const _loadFromAST = (
         _loadFromAST(node['value'], prop.this, {
             tag: 'body',
         })
+    } else if (_t == 'Slice') {
+        prop.type = 'index'
+        prop.value = 'slice'
+        prop.hasChild = false
+        for (const _t of ['lower', 'upper', 'step'] as Tag[]) {
+            if (typeof node[_t] != 'string') {
+                _loadFromAST(node[_t], prop.this, {
+                    tag: _t,
+                })
+            }
+        }
+    } else if (_t == 'Subscript') {
+        prop.type = 'path'
+        prop.hasChild = false
+        prop.node = getExprPath(node)
+        if (father) father.appendChild('child', prop.node, inf.appendAtBegin)
     } else if (_t == 'Tuple') {
         prop.type = 'tuple'
         for (const _item of node['elts']) {
@@ -422,32 +519,30 @@ const _loadFromAST = (
             tag: 'body',
         })
     }
-    if (!prop.node) {
-        prop.node = createLiteNode(prop.type, prop.value, father, {
-            tag: inf.tag,
-            appendAtBegin: inf.appendAtBegin,
-        })
-    }
-
-    // prop.node._debug = true
-
+    prop.node = prop.node
+        ? prop.node
+        : createLiteNode(prop.type, prop.value, father, {
+              tag: inf.tag,
+              appendAtBegin: inf.appendAtBegin,
+          })
     while (prop.this.childNodeCount) {
         const _c = prop.this.childNodes[0]
         prop.node.appendChild(_c.tag, _c.node)
     }
-
     if (prop.hasChild) {
-        for (const field of _fields) {
+        for (const field of ['body', 'orelse', 'args'] as ASTField[]) {
             if (Array.isArray(node[field])) {
-                for (const _node of node[field]) {
-                    _loadFromAST(_node, prop.node, {
-                        tag: tagGen(field),
-                    })
+                const _f = node[field]
+                if (Array.isArray(_f)) {
+                    for (const _node of _f) {
+                        _loadFromAST(_node, prop.node, {
+                            tag: tagGen(field),
+                        })
+                    }
                 }
             }
         }
     }
-
     return prop.node
 }
 
