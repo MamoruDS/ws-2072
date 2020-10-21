@@ -292,16 +292,34 @@ const _loadFromAST = (
     }
     if (typeof node == 'string') return
     const _t = node['node']
-
+    const GSOperator = () => {
+        const list = {
+            Add: 'add',
+            And: 'boolAnd',
+            BitAnd: 'bitAnd',
+            Div: 'division',
+            Eq: 'eq',
+            Gt: 'gt',
+            Gte: 'geq',
+            Lt: 'lt',
+            LtE: 'leq',
+            Mod: 'mod',
+            Mult: 'multiple',
+            NotEq: 'neq',
+            Or: 'boolOr',
+            Sub: 'minus',
+            // TODO:
+            // USub:
+        }
+        prop.type = 'operator'
+        prop.value = list[node['node']]
+        prop.hasChild = false
+    }
     if (false) {
     } else if (_t == 'Add') {
-        prop.type = 'operator'
-        prop.value = 'add'
-        prop.hasChild = false
+        GSOperator()
     } else if (_t == 'And') {
-        prop.type = 'operator'
-        prop.value = 'boolAnd'
-        prop.hasChild = false
+        GSOperator()
     } else if (_t == 'Assert') {
         prop.type = 'reserved'
         prop.value = 'assert'
@@ -336,9 +354,7 @@ const _loadFromAST = (
             tag: 'rhs',
         })
     } else if (_t == 'BitAnd') {
-        prop.type = 'operator'
-        prop.value = 'bitand'
-        prop.hasChild = false
+        GSOperator()
     } else if (_t == 'BoolOp') {
         prop.type = 'expression'
         prop.hasChild = false
@@ -391,13 +407,9 @@ const _loadFromAST = (
         prop.value = 'continue'
         prop.hasChild = false
     } else if (_t == 'Div') {
-        prop.type = 'operator'
-        prop.value = 'division'
-        prop.hasChild = false
+        GSOperator()
     } else if (_t == 'Eq') {
-        prop.type = 'operator'
-        prop.value = 'equal'
-        prop.hasChild = false
+        GSOperator()
     } else if (_t == 'Expr') {
         prop.node = _loadFromAST(node['value'], father, inf)
     } else if (_t == 'ExtSlice') {
@@ -450,12 +462,24 @@ const _loadFromAST = (
                 }
             }
         }
+    } else if (_t == 'Gt') {
+        GSOperator()
+    } else if (_t == 'GtE') {
+        GSOperator()
     } else if (_t == 'If') {
         prop.type = 'condition'
         prop.hasChild = true
         _loadFromAST(node['test'], prop.this, {
             tag: 'body',
         })
+    } else if (_t == 'IfExp') {
+        // TODO:
+    } else if (_t == 'Import') {
+        // TODO:
+    } else if (_t == 'ImportFrom') {
+        // TODO:
+    } else if (_t == 'In') {
+        // TODO:
     } else if (_t == 'Index') {
         prop.type = 'index'
         prop.value = 'index'
@@ -463,21 +487,33 @@ const _loadFromAST = (
         _loadFromAST(node['value'], prop.this, {
             tag: 'body',
         })
+    } else if (_t == 'JoinedStr') {
+        // TODO:
+    } else if (_t == 'List') {
+        // TODO:
+    } else if (_t == 'ListComp') {
+        // TODO:
+    } else if (_t == 'Load') {
+        // ignored
+    } else if (_t == 'Lt') {
+        GSOperator()
+    } else if (_t == 'LtE') {
+        GSOperator()
+    } else if (_t == 'Mod') {
+        GSOperator()
     } else if (_t == 'Module') {
         prop.type = 'document'
         prop.hasChild = true
+    } else if (_t == 'Mult') {
+        GSOperator()
     } else if (_t == 'Name') {
         prop.type = 'variable'
         prop.value = node['id']
         prop.hasChild = false
     } else if (_t == 'NotEq') {
-        prop.type = 'operator'
-        prop.value = 'notEqual'
-        prop.hasChild = false
+        GSOperator()
     } else if (_t == 'Or') {
-        prop.type = 'operator'
-        prop.value = 'boolOr'
-        prop.hasChild = false
+        GSOperator()
     } else if (_t == 'Pass') {
         prop.type = 'reserved'
         prop.value = 'pass'
@@ -499,6 +535,10 @@ const _loadFromAST = (
                 })
             }
         }
+    } else if (_t == 'Store') {
+        // ignored
+    } else if (_t == 'Sub') {
+        GSOperator()
     } else if (_t == 'Subscript') {
         prop.type = 'path'
         prop.hasChild = false
@@ -511,6 +551,18 @@ const _loadFromAST = (
                 tag: 'child',
             })
         }
+    } else if (_t == 'USub') {
+        GSOperator()
+    } else if (_t == 'UnaryOp') {
+        // TODO:
+    } else if (_t == 'alias') {
+        // ignored
+    } else if (_t == 'arg') {
+        // ignored
+    } else if (_t == 'arguments') {
+        // ignored
+    } else if (_t == 'comprehension') {
+        // TODO:
     } else if (_t == 'keyword') {
         prop.type = 'keyword'
         prop.value = node['arg']
