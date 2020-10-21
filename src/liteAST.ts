@@ -18,6 +18,7 @@ type NodeType =
     | 'index'
     | 'keyword'
     | 'loop'
+    | 'module'
     | 'operator'
     | 'path'
     | 'reserved'
@@ -479,9 +480,55 @@ const _loadFromAST = (
     } else if (_t == 'IfExp') {
         // TODO:
     } else if (_t == 'Import') {
-        // TODO:
+        prop.type = 'assign'
+        prop.hasChild = false
+        for (const _mod of node['names']) {
+            _loadFromAST(
+                {
+                    node: 'Assign',
+                    targets: [
+                        {
+                            node: 'Name',
+                            id:
+                                _mod['asname'] != 'None'
+                                    ? _mod['asname']
+                                    : _mod['name'],
+                        },
+                    ],
+                    value: {
+                        node: '_LiteAST.Module',
+                        name: _mod['name'],
+                    },
+                },
+                father,
+                inf
+            )
+        }
     } else if (_t == 'ImportFrom') {
-        // TODO:
+        prop.type = 'assign'
+        prop.hasChild = false
+        for (const _mod of node['names']) {
+            _loadFromAST(
+                {
+                    node: 'Assign',
+                    targets: [
+                        {
+                            node: 'Name',
+                            id:
+                                _mod['asname'] != 'None'
+                                    ? _mod['asname']
+                                    : _mod['name'],
+                        },
+                    ],
+                    value: {
+                        node: '_LiteAST.Module',
+                        name: [node['module'], _mod['name']].join('.'),
+                    },
+                },
+                father,
+                inf
+            )
+        }
     } else if (_t == 'In') {
         // TODO:
     } else if (_t == 'Index') {
@@ -606,6 +653,10 @@ const _loadFromAST = (
         _loadFromAST(node['value'] as ASTNode, prop.this, {
             tag: 'body',
         })
+    } else if (_t == '_LiteAST.Module') {
+        prop.type = 'module'
+        prop.value = node['name']
+        prop.hasChild = false
     }
     prop.node = prop.node
         ? prop.node
