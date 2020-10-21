@@ -43,6 +43,7 @@ type Tag =
     | 'upper'
     | 'step'
     | 'target'
+    | 'else'
 
 type TagChild = {
     tag: Tag
@@ -184,13 +185,6 @@ class LiteNode {
             value: this._value,
         })
     }
-}
-
-const tagGen = (field: ASTField): Tag => {
-    // if (field == 'body') {
-    //     return 'child'
-    // }
-    return 'child'
 }
 
 const getExprPath = (node: ASTNode): LiteNode => {
@@ -340,7 +334,7 @@ const _loadFromAST = (
             tag: 'lhs',
         })
         _loadFromAST(node['value'] as ASTNode, prop.this, {
-            tag: 'lhs',
+            tag: 'rhs',
         })
     } else if (_t == 'AsyncFunctionDef') {
         prop.type = 'function.async'
@@ -376,6 +370,24 @@ const _loadFromAST = (
         prop.hasChild = false
         prop.node = getExprPath(node)
         if (father) father.appendChild('child', prop.node, inf.appendAtBegin)
+    } else if (_t == 'AugAssign') {
+        prop.type = 'assign'
+        prop.hasChild = false
+        _loadFromAST(node['target'], prop.this, {
+            tag: 'lhs',
+        })
+        _loadFromAST(
+            {
+                node: 'BinOp',
+                left: node['target'],
+                op: node['op'],
+                right: node['value'] as ASTNode,
+            },
+            prop.this,
+            {
+                tag: 'rhs',
+            }
+        )
     } else if (_t == 'Await') {
         prop.type = 'reserved'
         prop.value = 'await'
@@ -418,7 +430,8 @@ const _loadFromAST = (
         prop.type = 'path'
         prop.hasChild = false
         prop.node = getExprPath(node)
-        if (father) father.appendChild('child', prop.node, inf.appendAtBegin)
+        if (father)
+            father.appendChild(inf.tag || 'child', prop.node, inf.appendAtBegin)
     } else if (_t == 'ClassDef') {
         prop.type = 'class'
         prop.value = node['name']
@@ -450,6 +463,17 @@ const _loadFromAST = (
         prop.type = 'reserved'
         prop.value = 'continue'
         prop.hasChild = false
+    } else if (_t == 'Del') {
+        // ignored
+    } else if (_t == 'Delete') {
+        prop.type = 'reserved'
+        prop.value = 'del'
+        prop.hasChild = false
+        for (const _target of node['targets']) {
+            _loadFromAST(_target, prop.this, {
+                tag: 'body',
+            })
+        }
     } else if (_t == 'Div') {
         GSOperator()
     } else if (_t == 'Eq') {
@@ -716,6 +740,15 @@ const _loadFromAST = (
     while (prop.this.childNodeCount) {
         const _c = prop.this.childNodes[0]
         prop.node.appendChild(_c.tag, _c.node)
+    }
+    const tagGen = (field: ASTField): Tag => {
+        if (field == 'body') {
+            return 'child'
+        }
+        if (field == 'orelse') {
+            return 'else'
+        }
+        return 'child'
     }
     if (prop.hasChild) {
         for (const field of ['body', 'orelse', 'args'] as ASTField[]) {
