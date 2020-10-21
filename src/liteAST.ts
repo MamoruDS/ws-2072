@@ -215,7 +215,7 @@ const getExprPath = (node: ASTNode): LiteNode => {
                     appendAtBegin: true,
                 }
             )
-            node = node['value']
+            node = node['value'] as ASTNode
         } else if (node['node'] == 'Subscript') {
             const _type = node['slice'] ? 'slice' : undefined
             const _subscript = createLiteNode('subscript', _type, path, {
@@ -227,7 +227,7 @@ const getExprPath = (node: ASTNode): LiteNode => {
                     tag: 'body',
                 })
             }
-            node = { ...node['value'] }
+            node = { ...(node['value'] as ASTNode) }
         } else if (node['node'] == 'Name') {
             _cur = createLiteNode('variable', node['id'], path, {
                 // TODO: change tag
@@ -296,7 +296,8 @@ const _loadFromAST = (
         const list = {
             Add: 'add',
             And: 'boolAnd',
-            BitAnd: 'bitAnd',
+            BitOr: 'or',
+            BitAnd: 'and',
             Div: 'division',
             Eq: 'eq',
             Gt: 'gt',
@@ -305,6 +306,7 @@ const _loadFromAST = (
             LtE: 'leq',
             Mod: 'mod',
             Mult: 'multiple',
+            Not: 'boolNot',
             NotEq: 'neq',
             Or: 'boolOr',
             Sub: 'minus',
@@ -333,7 +335,7 @@ const _loadFromAST = (
         _loadFromAST(node['targets'][0], prop.this, {
             tag: 'lhs',
         })
-        _loadFromAST(node['value'], prop.this, {
+        _loadFromAST(node['value'] as ASTNode, prop.this, {
             tag: 'lhs',
         })
     } else if (_t == 'Attribute') {
@@ -354,6 +356,8 @@ const _loadFromAST = (
             tag: 'rhs',
         })
     } else if (_t == 'BitAnd') {
+        GSOperator()
+    } else if (_t == 'BitOr') {
         GSOperator()
     } else if (_t == 'BoolOp') {
         prop.type = 'expression'
@@ -411,7 +415,7 @@ const _loadFromAST = (
     } else if (_t == 'Eq') {
         GSOperator()
     } else if (_t == 'Expr') {
-        prop.node = _loadFromAST(node['value'], father, inf)
+        prop.node = _loadFromAST(node['value'] as ASTNode, father, inf)
     } else if (_t == 'ExtSlice') {
         prop.type = 'index'
         prop.value = 'extSlice'
@@ -484,7 +488,7 @@ const _loadFromAST = (
         prop.type = 'index'
         prop.value = 'index'
         prop.hasChild = false
-        _loadFromAST(node['value'], prop.this, {
+        _loadFromAST(node['value'] as ASTNode, prop.this, {
             tag: 'body',
         })
     } else if (_t == 'JoinedStr') {
@@ -510,6 +514,8 @@ const _loadFromAST = (
         prop.type = 'variable'
         prop.value = node['id']
         prop.hasChild = false
+    } else if (_t == 'Not') {
+        GSOperator()
     } else if (_t == 'NotEq') {
         GSOperator()
     } else if (_t == 'Or') {
@@ -521,7 +527,7 @@ const _loadFromAST = (
     } else if (_t == 'Return') {
         prop.type = 'reserved'
         prop.hasChild = false
-        _loadFromAST(node['value'], prop.this, {
+        _loadFromAST(node['value'] as ASTNode, prop.this, {
             tag: 'body',
         })
     } else if (_t == 'Slice') {
@@ -554,7 +560,37 @@ const _loadFromAST = (
     } else if (_t == 'USub') {
         GSOperator()
     } else if (_t == 'UnaryOp') {
-        // TODO:
+        if (node['op']['node'] == 'Not') {
+            prop.type = 'expression'
+            prop.hasChild = false
+            _loadFromAST(
+                {
+                    node: 'Constant',
+                    value: 'False',
+                    kind: 'None',
+                },
+                prop.this,
+                {
+                    tag: 'lhs',
+                }
+            )
+            _loadFromAST(
+                {
+                    node: 'BitAnd',
+                },
+                prop.this,
+                {
+                    tag: 'op',
+                }
+            )
+            _loadFromAST(node['operand'], prop.this, {
+                tag: 'rhs',
+            })
+        } else {
+            throw new Error(
+                `cannot handle unknown UnaryOP with operator: "${node['op']['node']}"`
+            )
+        }
     } else if (_t == 'alias') {
         // ignored
     } else if (_t == 'arg') {
@@ -567,7 +603,7 @@ const _loadFromAST = (
         prop.type = 'keyword'
         prop.value = node['arg']
         prop.hasChild = false
-        _loadFromAST(node['value'], prop.this, {
+        _loadFromAST(node['value'] as ASTNode, prop.this, {
             tag: 'body',
         })
     }
