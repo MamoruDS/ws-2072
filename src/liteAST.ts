@@ -15,6 +15,7 @@ type NodeType =
     | 'document'
     | 'expression'
     | 'function'
+    | 'function.async'
     | 'index'
     | 'keyword'
     | 'loop'
@@ -25,6 +26,8 @@ type NodeType =
     | 'subscript'
     | 'tuple'
     | 'variable'
+    | 'vector'
+
 type ASTField = 'body' | 'orelse' | 'args'
 
 type Tag =
@@ -339,11 +342,47 @@ const _loadFromAST = (
         _loadFromAST(node['value'] as ASTNode, prop.this, {
             tag: 'lhs',
         })
+    } else if (_t == 'AsyncFunctionDef') {
+        prop.type = 'function.async'
+        prop.value = node['name']
+        prop.hasChild = true
+        if (!Array.isArray(node['args'])) {
+            const _arguments = node['args']
+            if (Array.isArray(_arguments['args'])) {
+                for (const _i in _arguments['args']) {
+                    const _arg = createLiteNode(
+                        'argument',
+                        _arguments['args'].slice().reverse()[_i]['arg'],
+                        prop.this,
+                        {
+                            tag: 'arg',
+                            appendAtBegin: true,
+                        }
+                    )
+                    // TODO: alternative tag: default
+                    const _default = _arguments['defaults'] //
+                        .slice()
+                        .reverse()[_i]
+                    if (_default) {
+                        _loadFromAST(_default, _arg, {
+                            tag: 'body',
+                        })
+                    }
+                }
+            }
+        }
     } else if (_t == 'Attribute') {
         prop.type = 'path'
         prop.hasChild = false
         prop.node = getExprPath(node)
         if (father) father.appendChild('child', prop.node, inf.appendAtBegin)
+    } else if (_t == 'Await') {
+        prop.type = 'reserved'
+        prop.value = 'await'
+        prop.hasChild = false
+        _loadFromAST(node['value'] as ASTNode, prop.this, {
+            tag: 'body',
+        })
     } else if (_t == 'BinOp') {
         prop.type = 'expression'
         prop.hasChild = false
@@ -481,6 +520,7 @@ const _loadFromAST = (
         // TODO:
     } else if (_t == 'Import') {
         prop.type = 'assign'
+        prop.node = prop.this // panic
         prop.hasChild = false
         for (const _mod of node['names']) {
             _loadFromAST(
@@ -506,6 +546,7 @@ const _loadFromAST = (
         }
     } else if (_t == 'ImportFrom') {
         prop.type = 'assign'
+        prop.node = prop.this // panic
         prop.hasChild = false
         for (const _mod of node['names']) {
             _loadFromAST(
@@ -541,7 +582,13 @@ const _loadFromAST = (
     } else if (_t == 'JoinedStr') {
         // TODO:
     } else if (_t == 'List') {
-        // TODO:
+        prop.type = 'vector'
+        prop.hasChild = false
+        for (const _element of node['elts']) {
+            _loadFromAST(_element, prop.this, {
+                tag: 'child',
+            })
+        }
     } else if (_t == 'ListComp') {
         // TODO:
     } else if (_t == 'Load') {
@@ -573,6 +620,7 @@ const _loadFromAST = (
         prop.hasChild = false
     } else if (_t == 'Return') {
         prop.type = 'reserved'
+        prop.value = 'return'
         prop.hasChild = false
         _loadFromAST(node['value'] as ASTNode, prop.this, {
             tag: 'body',
@@ -658,6 +706,7 @@ const _loadFromAST = (
         prop.value = node['name']
         prop.hasChild = false
     }
+    if (!prop.type) return
     prop.node = prop.node
         ? prop.node
         : createLiteNode(prop.type, prop.value, father, {
