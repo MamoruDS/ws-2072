@@ -1,5 +1,5 @@
 import { deepStrictEqual } from 'assert'
-import { genRandomHex } from './utils'
+import { genRandomHex, getChanges } from './utils'
 
 import { ASTNode } from './ast'
 
@@ -67,6 +67,9 @@ class LiteNode {
         this._debug = false
     }
 
+    get type(): NodeType {
+        return this._type
+    }
     get childNodes(): TagChild[] {
         return this._children
     }
@@ -81,6 +84,143 @@ class LiteNode {
     }
     get id(): string {
         return this._tempID
+    }
+    get tag(): string {
+        return this._parent
+            ? this._parent.childNodes.filter((child) => {
+                  return child.node.id == this._tempID
+              })[0].tag
+            : undefined
+    }
+    get code(): string {
+        let code: string
+        const _getChildrenByTag = (tags: Tag[]): TagChild[] => {
+            return this.childNodes.filter((child) => {
+                let _eq = false
+                tags.forEach((tag) => {
+                    if (tag == child.tag) _eq = true
+                })
+                return _eq
+            })
+        }
+        const _parse = (value: string): string => {
+            let _res: string = value
+            if (isNaN(parseInt(value))) {
+                if (value != 'False' && value != 'True' && value != 'Null') {
+                    _res = `"${value}"`
+                }
+            }
+            return _res
+        }
+        switch (this._type) {
+            case 'assign':
+                code = [
+                    _getChildrenByTag(['lhs'])[0].node.code,
+                    '=',
+                    _getChildrenByTag(['rhs'])[0].node.code,
+                ].join(' ')
+                break
+            case 'condition':
+                code = `if ${_getChildrenByTag(['body'])[0].node.code}:`
+                break
+            case 'constant':
+                code = _parse(this._value)
+                break
+            case 'expression':
+                code = [
+                    _getChildrenByTag(['lhs'])[0].node.code,
+                    _getChildrenByTag(['op'])[0].node.code,
+                    _getChildrenByTag(['rhs'])[0].node.code,
+                ].join(' ')
+                break
+            case 'operator':
+                switch (this._value) {
+                    case 'add':
+                        code = '+'
+                        break
+                    case 'boolAnd':
+                        code = 'and'
+                        break
+                    case 'or':
+                        code = '|'
+                        break
+                    case 'and':
+                        code = '&'
+                        break
+                    case 'division':
+                        code = '/'
+                        break
+                    case 'eq':
+                        code = '=='
+                        break
+                    case 'gt':
+                        code = '>'
+                        break
+                    case 'geq':
+                        code = '>='
+                        break
+                    case 'lt':
+                        code = '<'
+                        break
+                    case 'leq':
+                        code = '<='
+                        break
+                    case 'mod':
+                        code = '%'
+                        break
+                    case 'multiple':
+                        code = '*'
+                        break
+                    case 'boolNot':
+                        code = 'not'
+                        break
+                    case 'neq':
+                        code = '!='
+                        break
+                    case 'boolOr':
+                        code = 'or'
+                        break
+                    case 'minus':
+                        code = '-'
+                        break
+                    default:
+                        code = this._value
+                }
+                break
+            case 'path':
+                code = _getChildrenByTag(['child'])
+                    .map((child) => {
+                        const _head = child.node._value
+                        const _body = child.node.childNodeCount
+                            ? child.node.childNodes
+                                  .filter((_arg) => {
+                                      return _arg.tag == 'arg'
+                                  })
+                                  .map((_arg) => {
+                                      return _arg.node.code
+                                  })
+                                  .join(',')
+                            : undefined
+                        return `${_head}${_body ? `(${_body})` : ''}`
+                    })
+                    .join('.')
+                break
+            case 'variable':
+                code = this._value
+                break
+            case 'vector':
+                code = this.childNodes
+                    .filter((child) => {
+                        return child.tag == 'child'
+                    })
+                    .map((child) => {
+                        return child.node.code
+                    })
+                    .join(', ')
+                code = `[${code}]`
+                break
+        }
+        return code
     }
 
     _sum(): object {
