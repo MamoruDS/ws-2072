@@ -18,6 +18,7 @@ type NodeType =
     | 'function.async'
     | 'index'
     | 'keyword'
+    | 'lambda'
     | 'loop'
     | 'module'
     | 'operator'
@@ -605,6 +606,36 @@ const _loadFromAST = (
         })
     } else if (_t == 'JoinedStr') {
         // TODO:
+    } else if (_t == 'Lambda') {
+        prop.type = 'lambda'
+        prop.hasChild = false
+        if (!Array.isArray(node['args'])) {
+            const _arguments = node['args']
+            if (Array.isArray(_arguments['args'])) {
+                for (const _i in _arguments['args']) {
+                    const _arg = createLiteNode(
+                        'argument',
+                        _arguments['args'].slice().reverse()[_i]['arg'],
+                        prop.this,
+                        {
+                            tag: 'arg',
+                            appendAtBegin: true,
+                        }
+                    )
+                    const _default = _arguments['defaults'] //
+                        .slice()
+                        .reverse()[_i]
+                    if (_default) {
+                        _loadFromAST(_default, _arg, {
+                            tag: 'body',
+                        })
+                    }
+                }
+            }
+        }
+        _loadFromAST(node['body'] as ASTNode, prop.this, {
+            tag: 'child',
+        })
     } else if (_t == 'List') {
         prop.type = 'vector'
         prop.hasChild = false
@@ -770,7 +801,5 @@ const _loadFromAST = (
 const loadFromAST = (node: ASTNode): LiteNode => {
     return _loadFromAST(node)
 }
-
-const a = []
 
 export { LiteAST, loadFromAST }
