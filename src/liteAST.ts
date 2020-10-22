@@ -397,6 +397,8 @@ class LiteNode {
     }
 }
 
+const diffLiteNode = () => {}
+
 const getExprPath = (node: ASTNode): LiteNode => {
     const path = new LiteNode('path')
     let _i = 0
@@ -1011,4 +1013,4 @@ const loadFromAST = (node: ASTNode): LiteNode => {
     return _loadFromAST(node)
 }
 
-export { LiteAST, loadFromAST }
+export { LiteAST, diffLiteNode, loadFromAST }
