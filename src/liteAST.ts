@@ -397,7 +397,324 @@ class LiteNode {
     }
 }
 
-const diffLiteNode = () => {}
+const diffLiteNode = (
+    lhs: LiteNode,
+    rhs: LiteNode,
+    options: {
+        debugSolve?: boolean
+        debugChangeAPI?: boolean
+        debugFrom?: boolean
+        debugIDS?: boolean
+        debugChecking?: boolean
+        debugPending?: boolean
+        debugDiff?: boolean
+    } = {
+        debugSolve: true,
+        // debugChangeAPI: true,
+        // debugFrom: true,
+        // debugIDS: true,
+        // debugChecking: true,
+        debugPending: true,
+        debugDiff: true,
+    }
+) => {
+    const _OPT = options
+    const pending: { id: string; lhs: TagChild; rhs: TagChild }[] = []
+    const res: {
+        id: [string, string]
+        type: string
+    }[] = []
+    const isSimilar = (lhs: TagChild, rhs: TagChild): boolean => {
+        let res = false
+        if (lhs.node.type == rhs.node.type) {
+            if (false) {
+            } else if (lhs.node.type == 'constant') {
+                res =
+                    getExtPYType(lhs.node.value) == getExtPYType(rhs.node.value)
+            } else if (lhs.node.type == 'assign') {
+                res = deepEq(
+                    lhs.node.childNodes
+                        .filter((_child) => {
+                            return _child.tag == 'lhs'
+                        })[0]
+                        .node._DEBUG(),
+                    rhs.node.childNodes
+                        .filter((_child) => {
+                            return _child.tag == 'lhs'
+                        })[0]
+                        .node._DEBUG()
+                )
+            } else {
+                res = true
+            }
+        }
+        return res
+    }
+    const isEqual = (lhs: TagChild, rhs: TagChild): boolean => {
+        let res = false
+        if (lhs.node.type == rhs.node.type) {
+            try {
+                deepStrictEqual(lhs.node._DEBUG(), rhs.node._DEBUG())
+                res = true
+            } catch (e) {
+                // console.log(e)
+            }
+        }
+        return res
+    }
+    const _verticalHistSearch = (
+        cur: TagChild,
+        searchFrom: string[],
+        options: {
+            ignoreParentCheck?: boolean
+        } = {}
+    ) => {
+        const _getNodeById = (_id: string): LiteNode => {
+            return rhs.getNodeById(_id) || lhs.getNodeById(_id)
+        }
+        const _from = searchFrom.filter((_id) => {
+            const _child = _getNodeById(_id)
+            const _curPID = cur.node.parentNode
+                ? cur.node.parentNode.id
+                : undefined
+            const _curPCoID = cur.node.parentNode
+                ? cur.node.parentNode.coID
+                : undefined
+            const _childPID = _child.parentNode
+                ? _child.parentNode.id
+                : undefined
+            const _childPCoID = _child.parentNode
+                ? _child.parentNode.coID
+                : undefined
+            const _comp = options.ignoreParentCheck || _childPID == _curPCoID
+            if (_OPT.debugIDS)
+                console.log({
+                    msg: '---- IDS ----',
+                    from: _id,
+                    curCL: cur.node.code,
+                    fromCL: _child.code,
+                    curPID: _curPID,
+                    curPCoID: _curPCoID,
+                    fromPID: _childPID,
+                    fromPCoID: _childPCoID,
+                    // same: Boolean(_childPID == _curPID),
+                    res: Boolean(_comp),
+                })
+            return _comp
+        })
+        if (_OPT.debugFrom)
+            console.log({
+                msg: '---- FROM ----',
+                from: _from,
+            })
+        _from.forEach((_id) => {
+            const _target = _getNodeById(_id)
+            // TODO: grant more tag from different type of LiteAST
+            // const _children = _target.getNodesByType(cur.node.type)
+            const _children = _target.getAllSubNodes()
+            // console.log({
+            //     target: _target.code,
+            //     subNodes: _children.map((child) => {
+            //         return child.code
+            //     }),
+            //     subPath: _children.map((child) => {
+            //         return child
+            //             .getPathToRoot()
+            //             .map((node) => {
+            //                 return node.type
+            //             })
+            //             .join('/')
+            //     }),
+            // })
+            if (_OPT.debugChecking)
+                console.log({
+                    msg: '---- CHECKING ----',
+                    cur: cur.node.code,
+                    target: _target.code,
+                })
+            _children.forEach((_child) => {
+                try {
+                    if (_OPT.debugDiff)
+                        console.table({
+                            // msg: '--- DIFF ---',
+                            lhs: _child._DEBUG(),
+                            rhs: cur.node._DEBUG(),
+                        })
+                    deepStrictEqual(_child._DEBUG(), cur.node._DEBUG())
+                    let _min: LiteNode = _child
+                    while (!_min.coID && _min) {
+                        _min = _min.parentNode
+                    }
+                    const distance = cur.node.distanceTo(_min.coID)
+                    console.log({
+                        distance,
+                    })
+                } catch {}
+            })
+        })
+    }
+    pending.push({
+        id: genRandomHex(4),
+        lhs: {
+            tag: 'child',
+            node: lhs,
+        },
+        rhs: {
+            tag: 'child',
+            node: rhs,
+        },
+    })
+    while (pending.length) {
+        const check = pending.shift()
+        const _lhsChildren = check.lhs.node.childNodes
+        const _rhsChildren = check.rhs.node.childNodes
+        if (_lhsChildren.length > 0 && _rhsChildren.length > 0) {
+            const _diff = getChanges<TagChild>(
+                _lhsChildren,
+                _rhsChildren,
+                isEqual,
+                isSimilar
+            )
+            if (_OPT.debugChangeAPI)
+                console.log({
+                    msg: '---- GetChanges ----',
+                    diff: _diff,
+                })
+            // set coopID first
+            _diff.forEach((_co) => {
+                // if (_co['oi'] != null && _co['ni'] != null && !_co['mod']) {
+                if (_co['oi'] != null && _co['ni'] != null) {
+                    const _lhsNode = _lhsChildren[_co['oi']]
+                    const _rhsNode = _rhsChildren[_co['ni']]
+                    _lhsNode.node.coID = _rhsNode.node.id
+                    _rhsNode.node.coID = _lhsNode.node.id
+                    // console.log({
+                    //     _co,
+                    //     lID: _lhsNode.node.id,
+                    //     lCoID: _lhsNode.node.coID,
+                    //     rID: _rhsNode.node.id,
+                    //     rCoID: _rhsNode.node.coID,
+                    // })
+                }
+            })
+            // ^ set coopID done.
+            _diff.forEach((_co) => {
+                if (_co['oi'] == null) {
+                    // node added
+                    _verticalHistSearch(
+                        _rhsChildren[_co['ni']],
+                        res
+                            .filter((_r) => {
+                                return (
+                                    typeof _r.id[0] != 'undefined' &&
+                                    typeof _r.id[1] == 'undefined'
+                                )
+                            })
+                            .map((_r) => {
+                                return _r.id[0]
+                            })
+                    )
+                    res.push({
+                        id: [undefined, _rhsChildren[_co['ni']].node.id],
+                        type: 'node_added',
+                    })
+                    if (_OPT.debugSolve)
+                        console.log({
+                            msg: `---- SOLVE [${check.id}] ----`,
+                            lhs: undefined,
+                            rhs: {
+                                type: _rhsChildren[_co['ni']].node.type,
+                                code: _rhsChildren[_co['ni']].node.code,
+                            },
+                        })
+                }
+                if (_co['ni'] == null) {
+                    // node deleted
+                    _verticalHistSearch(
+                        _lhsChildren[_co['oi']],
+                        res
+                            .filter((_r) => {
+                                return (
+                                    typeof _r.id[0] == 'undefined' &&
+                                    typeof _r.id[1] != 'undefined'
+                                )
+                            })
+                            .map((_r) => {
+                                return _r.id[1]
+                            })
+                    )
+                    res.push({
+                        id: [_lhsChildren[_co['oi']].node.id, undefined],
+                        type: 'node_deleted',
+                    })
+                    if (_OPT.debugSolve)
+                        console.log({
+                            msg: `---- SOLVE [${check.id}] ----`,
+                            lhs: {
+                                type: _lhsChildren[_co['oi']].node.type,
+                                code: _lhsChildren[_co['oi']].node.code,
+                            },
+                            rhs: undefined,
+                        })
+                }
+                if (_co['mod']) {
+                    const _lhsChild = _lhsChildren[_co['oi']]
+                    const _rhsChild = _rhsChildren[_co['ni']]
+                    const _pendingId = genRandomHex(4)
+                    pending.push({
+                        id: _pendingId,
+                        lhs: _lhsChild,
+                        rhs: _rhsChild,
+                    })
+                    if (_OPT.debugPending) {
+                        console.log({
+                            msg: '---- PENDING ----',
+                            id: _pendingId,
+                            // lta: _lhsChild.tag,
+                            // lty: _lhsChild.node.type,
+                            lc: _lhsChild.node.code,
+                            // rta: _rhsChild.tag,
+                            // rty: _lhsChild.node.type,
+                            rc: _rhsChild.node.code,
+                        })
+                    }
+                }
+            })
+        } else {
+            const _lhsNode = check.lhs.node
+            const _rhsNode = check.rhs.node
+            res.push({
+                id: [_lhsNode.id, _rhsNode.id],
+                type: 'value_modified',
+            })
+            if (_OPT.debugSolve)
+                console.log({
+                    msg: `---- SOLVE [${check.id}] ----`,
+                    lhs: {
+                        type: _lhsNode.type,
+                        value: _lhsNode['_value'],
+                    },
+                    rhs: {
+                        type: _rhsNode.type,
+                        value: _rhsNode['_value'],
+                    },
+                })
+        }
+    }
+    // console.log(res)
+    res.forEach((_diff) => {
+        let _diffLhs = lhs.getNodeById(_diff['id'][0])
+        let _diffRhs = rhs.getNodeById(_diff['id'][1])
+        // console.log({
+        //     oid: _diff['id'][0],
+        //     old: _diffLhs ? _diffLhs.type : undefined,
+        //     nid: _diff['id'][1],
+        //     new: _diffRhs ? _diffRhs.type : undefined,
+        //     type: _diff['type'],
+        // })
+    })
+    return
+}
 
 const getExprPath = (node: ASTNode): LiteNode => {
     const path = new LiteNode('path')
