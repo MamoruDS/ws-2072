@@ -51,12 +51,31 @@ type TagChild = {
     node: LiteNode
 }
 
+type ExtPYType = 'Bool' | 'Str' | 'Number' | 'Null'
+
+const getExtPYType = (code: string): ExtPYType => {
+    if (code == 'True' || code == 'False') return 'Bool'
+    if (code == 'Null') return 'Null'
+    if (!isNaN(parseInt(code))) return 'Number'
+    return 'Str'
+}
+
+const deepEq = (lhs: any, rhs: any): boolean => {
+    try {
+        deepStrictEqual(lhs, rhs)
+    } catch {
+        return false
+    }
+    return true
+}
+
 class LiteNode {
     private readonly _type: NodeType
     private readonly _value: any
     private _parent: LiteNode
     private _children: TagChild[]
     private _tempID: string
+    private _coopID: string
     _debug: boolean
 
     constructor(type: NodeType, value?: any) {
@@ -69,6 +88,9 @@ class LiteNode {
 
     get type(): NodeType {
         return this._type
+    }
+    get value(): any {
+        return this._value
     }
     get childNodes(): TagChild[] {
         return this._children
@@ -84,6 +106,12 @@ class LiteNode {
     }
     get id(): string {
         return this._tempID
+    }
+    get coID(): string {
+        return this._coopID
+    }
+    set coID(coopID: string) {
+        this._coopID = coopID
     }
     get tag(): string {
         return this._parent
@@ -125,6 +153,9 @@ class LiteNode {
                 break
             case 'constant':
                 code = _parse(this._value)
+                break
+            case 'document':
+                code = '[LiteAST.document]'
                 break
             case 'expression':
                 code = [
@@ -296,21 +327,34 @@ class LiteNode {
             return node.id == id
         })[0]
     }
-    getNodeByType = (type: NodeType): LiteNode[] => {
+    getNodesByType = (type: NodeType): LiteNode[] => {
         return this._walk(this).filter((node) => {
             return node._type == type
         })
     }
+    getNodesByTypes = (types: NodeType[]): LiteNode[] => {
+        return this._walk(this).filter((node) => {
+            return types.indexOf(node._type) != -1
+        })
+    }
+    getAllSubNodes = (): LiteNode[] => {
+        return this._walk(this).filter((node) => {
+            return true
+        })
+    }
     getRootNode = (): LiteNode => {
-        let node: LiteNode = this
+        return this.getPathToRoot()[0]
+    }
+    getPathToRoot = (): LiteNode[] => {
+        let path: LiteNode[] = [this]
         while (true) {
-            if (node._parent) {
-                node = node._parent
+            if (path[0]._parent) {
+                path.unshift(path[0]._parent)
             } else {
                 break
             }
         }
-        return node
+        return path
     }
     removeChild = (child: LiteNode): void => {
         for (const i in this._children) {
@@ -318,6 +362,31 @@ class LiteNode {
                 this._children.splice(parseInt(i), 1)
                 break
             }
+        }
+    }
+    distanceTo = (id: string, _oneway?: boolean): number => {
+        const _root = this.getRootNode()
+        if (_root.getNodeById(id)) {
+            let node: LiteNode = this
+            let distance = 0
+            while (node.id != id) {
+                if (this.getNodeById(id)) {
+                    // to bot
+                    for (const _child of node.childNodes) {
+                        if (_child.node.id == id) {
+                            node = _child.node
+                            break
+                        }
+                    }
+                } else {
+                    // to top
+                    node = node.parentNode
+                }
+                distance += 1
+            }
+            return distance
+        } else {
+            return -1
         }
     }
     toJSON(): string {
