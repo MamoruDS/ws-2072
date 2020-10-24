@@ -45,30 +45,42 @@ type ASTRes = {
     ast_json: ASTNode
 }
 
-type ASTNode = {
-    node: string
+import * as _TEMP from './_gen'
+
+export type ASTNode = {
+    node: _TEMP.ASTType
     lineno?: number
     end_lineno?: number
-    test?: {
-        node: string
-        left: {
-            node: string
-        }
-    }
-    body?: ASTNode[]
+    test?: ASTNode
+    body?: ASTNode | ASTNode[]
     orelse?: ASTNode[]
-    value?: {
-        func?: {
-            id?: string
-        }
-    }
-    targets?: {
-        node: string
-        id: string
-        ctx: {
-            node: string
-        }
-    }[]
+    value?: string | ASTNode
+    values?: ASTNode[]
+    targets?: ASTNode[]
+    elts?: ASTNode[]
+    id?: string
+    left?: ASTNode
+    right?: ASTNode
+    op?: ASTNode
+    args?: ASTNode | ASTNode[]
+    arg?: string
+    ops?: ASTNode[]
+    comparators?: ASTNode[]
+    slice?: ASTNode
+    name?: string
+    bases?: ASTNode[]
+    dims?: ASTNode[]
+    lower?: 'None' | ASTNode
+    upper?: 'None' | ASTNode
+    step?: 'None' | ASTNode
+    target?: ASTNode
+    iter?: ASTNode
+    defaults?: ASTNode[]
+    kind?: 'None' | string
+    operand?: ASTNode
+    names?: ASTNode[]
+    asname?: string
+    module?: string
 }
 
 type NodeCount = number | null
@@ -102,6 +114,7 @@ export const getAST = (
         return { ...res, err: true }
     } else {
         const astRes = JSON.parse(astProc.stdout) as ASTRes
+        getASTNodeInfo(astRes['ast_json'])
         return {
             ...res,
             ast_count: astRes['ast_count'],
@@ -161,12 +174,20 @@ export const getMinScopePath = (
     return _path
 }
 
+const T: _TEMP.ASTType[] = _TEMP.ASTTypeList
+
 export const getASTNodeInfo = (node: ASTNode): NodeInfo => {
     const info: NodeInfo = {
         nodeCnt: node['node'] ? 1 : 0,
         topLineNr: node['lineno'],
         botLineNr: node['end_lineno'],
     }
+    let n = node['node']
+    if (T.indexOf(n) == -1) {
+        T.push(n)
+        console.log(`[ASTWALK] never seen before: '${n}'`)
+    }
+
     const _mergeInfo = (_inf: NodeInfo) => {
         info.nodeCnt += _inf.nodeCnt
         if (info.topLineNr > _inf.topLineNr) {
