@@ -409,13 +409,13 @@ const diffLiteNode = (
         debugPending?: boolean
         debugDiff?: boolean
     } = {
-        debugSolve: true,
+        // debugSolve: true,
         // debugChangeAPI: true,
         // debugFrom: true,
         // debugIDS: true,
         // debugChecking: true,
-        debugPending: true,
-        debugDiff: true,
+        // debugPending: true,
+        // debugDiff: true,
     }
 ) => {
     const _OPT = options
@@ -469,6 +469,9 @@ const diffLiteNode = (
             ignoreParentCheck?: boolean
         } = {}
     ) => {
+        const res = {
+            _found: false,
+        }
         const _getNodeById = (_id: string): LiteNode => {
             return rhs.getNodeById(_id) || lhs.getNodeById(_id)
         }
@@ -511,7 +514,9 @@ const diffLiteNode = (
             const _target = _getNodeById(_id)
             // TODO: grant more tag from different type of LiteAST
             // const _children = _target.getNodesByType(cur.node.type)
-            const _children = _target.getAllSubNodes()
+            const _children = _target.getAllSubNodes().sort((a, b) => {
+                return a.getPathToRoot.length - b.getPathToRoot.length
+            })
             // console.log({
             //     target: _target.code,
             //     subNodes: _children.map((child) => {
@@ -532,15 +537,17 @@ const diffLiteNode = (
                     cur: cur.node.code,
                     target: _target.code,
                 })
-            _children.forEach((_child) => {
+            let found = false
+            for (const _child of _children) {
                 try {
                     if (_OPT.debugDiff)
                         console.table({
-                            // msg: '--- DIFF ---',
+                            msg: '--- DIFF ---',
                             lhs: _child._DEBUG(),
                             rhs: cur.node._DEBUG(),
                         })
                     deepStrictEqual(_child._DEBUG(), cur.node._DEBUG())
+                    found = true
                     let _min: LiteNode = _child
                     while (!_min.coID && _min) {
                         _min = _min.parentNode
@@ -549,9 +556,23 @@ const diffLiteNode = (
                     console.log({
                         distance,
                     })
+                    break
                 } catch {}
-            })
+            }
+            if (!found) {
+                // for (const _child of _children) {
+                //     found = _verticalHistSearch(
+                //         { tag: 'body', node: _child },
+                //         [cur.node.id],
+                //         options
+                //     )._found
+                //     if (found) break
+                // }
+            } else {
+                res._found = true
+            }
         })
+        return res
     }
     pending.push({
         id: genRandomHex(4),
@@ -713,7 +734,7 @@ const diffLiteNode = (
         //     type: _diff['type'],
         // })
     })
-    return
+    return res
 }
 
 const getExprPath = (node: ASTNode): LiteNode => {
@@ -1265,9 +1286,9 @@ const _loadFromAST = (
                 tag: 'rhs',
             })
         } else {
-            throw new Error(
-                `cannot handle unknown UnaryOP with operator: "${node['op']['node']}"`
-            )
+            // throw new Error(
+            //     `cannot handle unknown UnaryOP with operator: "${node['op']['node']}"`
+            // )
         }
     } else if (_t == 'alias') {
         // ignored
