@@ -69,7 +69,7 @@ const deepEq = (lhs: any, rhs: any): boolean => {
     return true
 }
 
-class LiteNode {
+export class LiteNode {
     private readonly _type: NodeType
     private readonly _value: any
     private _parent: LiteNode
@@ -342,15 +342,40 @@ class LiteNode {
         this._document = doc
         // TODO: doc checking
     }
+    // getPosition(
+    //     options: {
+    //         minScopeType: 'node' | 'line' | 'scope' | 'function'
+    //     } = {
+    //         minScopeType: 'node',
+    //     }
+    // ) {
+    // }
     getDocument(
         options: {
+            indentFix: boolean
             minScopeType: 'node' | 'line' | 'scope' | 'function'
         } = {
+            indentFix: true,
             minScopeType: 'node',
         }
     ): string {
+        const _indentFix = (lines: string): string => {
+            const _lines = lines.split('\n')
+            let _minIndent = Infinity
+            _lines.forEach((_line) => {
+                try {
+                    const _l = _line.match(/^\s{0,}/)[0].length
+                    _minIndent = _l < _minIndent ? _l : _minIndent
+                } catch {}
+            })
+            return _lines
+                .map((_line) => {
+                    return _line.substr(_minIndent)
+                })
+                .join('\n')
+        }
         if (options.minScopeType == 'node') {
-            return this.document
+            return _indentFix(this.document)
         }
         const _line = this.line
         if (options.minScopeType == 'line') {
@@ -362,11 +387,12 @@ class LiteNode {
             ) {
                 node = node.parentNode
             }
-            return node.document
+            return _indentFix(node.document)
         }
         if (options.minScopeType == 'scope') {
             // TODO:
             return this.getDocument({
+                indentFix: options.indentFix,
                 minScopeType: 'function',
             })
         }
@@ -375,7 +401,7 @@ class LiteNode {
             while (['function', 'function.async'].indexOf(node.type) == -1) {
                 node = node.parentNode
             }
-            return node.document
+            return _indentFix(node.document)
         }
     }
 
@@ -522,6 +548,11 @@ class LiteNode {
     }
 }
 
+type LiteASTDiffRes = {
+    id: [string, string]
+    type: string
+}
+
 const diffLiteNode = (
     lhs: LiteNode,
     rhs: LiteNode,
@@ -542,13 +573,10 @@ const diffLiteNode = (
         // debugPending: true,
         // debugDiff: true,
     }
-) => {
+): LiteASTDiffRes[] => {
     const _OPT = options
     const pending: { id: string; lhs: TagChild; rhs: TagChild }[] = []
-    const res: {
-        id: [string, string]
-        type: string
-    }[] = []
+    const res: LiteASTDiffRes[] = []
     const isSimilar = (lhs: TagChild, rhs: TagChild): boolean => {
         let res = false
         if (lhs.node.type == rhs.node.type) {
