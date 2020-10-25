@@ -74,8 +74,11 @@ class LiteNode {
     private readonly _value: any
     private _parent: LiteNode
     private _children: TagChild[]
+    private _document: string
     private _tempID: string
     private _coopID: string
+    private _offset: [number | null, number | null]
+    private _line: [number | null, number | null]
     _debug: boolean
 
     constructor(type: NodeType, value?: any) {
@@ -119,6 +122,24 @@ class LiteNode {
                   return child.node.id == this._tempID
               })[0].tag
             : undefined
+    }
+    get document(): string | undefined {
+        if (this.type == 'document') return this._document
+        const _doc = this._document || this.getRootNode().document
+        const _line = this.line
+        const _offset = this.offset
+        if (_doc && _line[0] != null) {
+            const _local = _doc.split('\n').slice(_line[0] - 1, _line[1])
+            const _1 = _local.length - 1
+            if (_1 == 0) {
+                _local[0] = _local[0].substring(_offset[0], _offset[1])
+            } else {
+                _local[0] = _local[0].substr(_offset[0])
+                _local[_1] = _local[_1].substring(0, _offset[1])
+            }
+            return _local.join('\n')
+        }
+        return undefined // TBD
     }
     get code(): string {
         let code: string
@@ -252,6 +273,55 @@ class LiteNode {
                 break
         }
         return code
+    }
+    get line(): [number | null, number | null] {
+        let line = this._line
+        while (typeof line == 'undefined') {
+            try {
+                line = this.parentNode.line
+            } catch (e) {
+                if (e instanceof ReferenceError) {
+                    line = [null, null]
+                    break
+                }
+                throw e
+            }
+        }
+        return line
+    }
+    get offset(): [number | null, number | null] {
+        let offset = this._offset
+        while (typeof offset == 'undefined') {
+            try {
+                offset = this.parentNode.offset
+            } catch (e) {
+                if (e instanceof ReferenceError) {
+                    offset = [null, null]
+                    break
+                }
+                throw e
+            }
+        }
+        return offset
+    }
+    _setPosition(
+        line_top: number,
+        line_bot: number,
+        offset_left: number,
+        offset_right: number
+    ) {
+        this._line = [
+            typeof line_top == 'number' ? line_top : null,
+            typeof line_bot == 'number' ? line_bot : null,
+        ]
+        this._offset = [
+            typeof offset_left == 'number' ? offset_left : null,
+            typeof offset_right == 'number' ? offset_right : null,
+        ]
+    }
+    setDocument(doc: string) {
+        this._document = doc
+        // TODO: doc checking
     }
 
     _sum(): object {
@@ -722,18 +792,6 @@ const diffLiteNode = (
                 })
         }
     }
-    // console.log(res)
-    res.forEach((_diff) => {
-        let _diffLhs = lhs.getNodeById(_diff['id'][0])
-        let _diffRhs = rhs.getNodeById(_diff['id'][1])
-        // console.log({
-        //     oid: _diff['id'][0],
-        //     old: _diffLhs ? _diffLhs.type : undefined,
-        //     nid: _diff['id'][1],
-        //     new: _diffRhs ? _diffRhs.type : undefined,
-        //     type: _diff['type'],
-        // })
-    })
     return res
 }
 
@@ -1344,6 +1402,12 @@ const _loadFromAST = (
             }
         }
     }
+    prop.node._setPosition(
+        node['lineno'],
+        node['end_lineno'],
+        node['col_offset'],
+        node['end_col_offset']
+    )
     return prop.node
 }
 
