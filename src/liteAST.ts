@@ -287,19 +287,38 @@ class LiteNode {
                 throw e
             }
         }
+        if (this._type == 'function' || this._type == 'function.async') {
+            const lines = this.getRootNode().document.split('\n')
+            while (lines[line[0] - 1].match(/^\s{0,}(async\s)?def\s/) == null) {
+                line[0] -= 1
+                if (line[0] == 0) {
+                    line = [null, null]
+                    break
+                }
+            }
+            for (const _child of this._children) {
+                if (_child.node._line[1] > line[1]) {
+                    line[1] = _child.node._line[1]
+                }
+            }
+        }
         return line
     }
     get offset(): [number | null, number | null] {
         let offset = this._offset
-        while (typeof offset == 'undefined') {
-            try {
-                offset = this.parentNode.offset
-            } catch (e) {
-                if (e instanceof ReferenceError) {
-                    offset = [null, null]
-                    break
+        if (['function', 'function.async', 'module']) {
+            offset = [0, Infinity]
+        } else {
+            while (typeof offset == 'undefined') {
+                try {
+                    offset = this.parentNode.offset
+                } catch (e) {
+                    if (e instanceof ReferenceError) {
+                        offset = [null, null]
+                        break
+                    }
+                    throw e
                 }
-                throw e
             }
         }
         return offset
@@ -322,6 +341,42 @@ class LiteNode {
     setDocument(doc: string) {
         this._document = doc
         // TODO: doc checking
+    }
+    getDocument(
+        options: {
+            minScopeType: 'node' | 'line' | 'scope' | 'function'
+        } = {
+            minScopeType: 'node',
+        }
+    ): string {
+        if (options.minScopeType == 'node') {
+            return this.document
+        }
+        const _line = this.line
+        if (options.minScopeType == 'line') {
+            let node: LiteNode = this
+            while (
+                ['function', 'function.async', 'document'].indexOf(
+                    node.parentNode.type
+                ) == -1
+            ) {
+                node = node.parentNode
+            }
+            return node.document
+        }
+        if (options.minScopeType == 'scope') {
+            // TODO:
+            return this.getDocument({
+                minScopeType: 'function',
+            })
+        }
+        if (options.minScopeType == 'function') {
+            let node: LiteNode = this
+            while (['function', 'function.async'].indexOf(node.type) == -1) {
+                node = node.parentNode
+            }
+            return node.document
+        }
     }
 
     _sum(): object {
