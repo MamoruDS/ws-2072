@@ -8,3 +8,6 @@ temp/
 projects/
 
 package-lock.json
+
+.vscode/
+TODO.md
