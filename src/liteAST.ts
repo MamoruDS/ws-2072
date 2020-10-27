@@ -380,12 +380,14 @@ export class LiteNode {
         const _line = this.line
         if (options.minScopeType == 'line') {
             let node: LiteNode = this
-            while (
-                ['function', 'function.async', 'document'].indexOf(
-                    node.parentNode.type
-                ) == -1
-            ) {
-                node = node.parentNode
+            while (true) {
+                if (typeof node.parentNode == 'undefined') break
+                if (
+                    ['function', 'function.async', 'document'].indexOf(
+                        node.parentNode.type
+                    ) == -1
+                )
+                    node = node.parentNode
             }
             return _indentFix(node.document)
         }
@@ -398,8 +400,10 @@ export class LiteNode {
         }
         if (options.minScopeType == 'function') {
             let node: LiteNode = this
-            while (['function', 'function.async'].indexOf(node.type) == -1) {
-                node = node.parentNode
+            while (true) {
+                if (typeof node.parentNode == 'undefined') break
+                if (['function', 'function.async'].indexOf(node.type) == -1)
+                    node = node.parentNode
             }
             return _indentFix(node.document)
         }
