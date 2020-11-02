@@ -585,9 +585,6 @@ const diffLiteNode = (
         let res = false
         if (lhs.node.type == rhs.node.type) {
             if (false) {
-            } else if (lhs.node.type == 'constant') {
-                res =
-                    getExtPYType(lhs.node.value) == getExtPYType(rhs.node.value)
             } else if (lhs.node.type == 'assign') {
                 res = deepEq(
                     lhs.node.childNodes
@@ -601,6 +598,11 @@ const diffLiteNode = (
                         })[0]
                         .node._DEBUG()
                 )
+            } else if (lhs.node.type == 'constant') {
+                res =
+                    getExtPYType(lhs.node.value) == getExtPYType(rhs.node.value)
+            } else if (lhs.node.type == 'document') {
+                res = false
             } else {
                 res = true
             }
