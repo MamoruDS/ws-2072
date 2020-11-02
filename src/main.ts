@@ -7,12 +7,27 @@ const options = {
     githubToken: undefined,
     pythonBIN: 'python',
     strictIfConditionCheck: true,
-    disableLiteAST: false,
+    // disableLiteAST: false,
 } as {
     githubToken: string
     pythonBIN: string
     strictIfConditionCheck: boolean
-    disableLiteAST: boolean
+    // disableLiteAST: boolean
+}
+
+type LiteASTDiffRes = {
+    line: [string, string]
+    snippet: [string, string]
+    type: string
+    path: [string, string]
+    node: [object, object]
+}
+
+type CodeDiff<T> = {
+    url: string
+    code_old: string
+    code_new: string
+    diff: T[]
 }
 
 const LiteASTDiff = (
@@ -22,7 +37,7 @@ const LiteASTDiff = (
         indentFix?: boolean
         minScopeType?: 'function'
     }
-) => {
+): LiteASTDiffRes[] => {
     const getNodeFrom = (root: LiteNode, id: string): LiteNode | undefined => {
         return id ? root.getNodeById(id) : undefined
     }
@@ -89,9 +104,23 @@ const LiteASTDiff = (
     })
 }
 
-const loadFromSnip = (snipOld: string, snipNew: string): CodeDiff => {
+function loadFromSnip(
+    snipOld: string,
+    snipNew: string,
+    useLiteAST: false
+): CodeDiff<ASTDiffRes>
+function loadFromSnip(
+    snipOld: string,
+    snipNew: string,
+    useLiteAST: true
+): CodeDiff<LiteASTDiffRes>
+function loadFromSnip(
+    snipOld: string,
+    snipNew: string,
+    useLiteAST: boolean = true
+): CodeDiff<object> {
     const diff = []
-    if (options.disableLiteAST) {
+    if (!useLiteAST) {
         const astOld = getAST(snipOld)
         const astNew = getAST(snipNew)
         ASTDiffAlt(astOld['ast_object'], astNew['ast_object']).forEach(
@@ -112,15 +141,21 @@ const loadFromSnip = (snipOld: string, snipNew: string): CodeDiff => {
     }
 }
 
-type CodeDiff = {
-    url: string
-    code_old: string
-    code_new: string
-    // diff: ASTDiffRes[]
-    diff: object[]
-}
-
-const loadPatchFile = (file: PatchFile, commitURL?: string): CodeDiff => {
+function loadPatchFile(
+    file: PatchFile,
+    commitURL: string,
+    useLiteAST: false
+): CodeDiff<ASTDiffRes>
+function loadPatchFile(
+    file: PatchFile,
+    commitURL: string,
+    useLiteAST: true
+): CodeDiff<LiteASTDiffRes>
+function loadPatchFile(
+    file: PatchFile,
+    commitURL: string,
+    useLiteAST: boolean = true
+): CodeDiff<ASTDiffRes | LiteASTDiffRes> {
     const changes = { '+': [], '-': [] } as Changes
     for (const c of file.modified_lines) {
         if (c.added) {
@@ -140,7 +175,7 @@ const loadPatchFile = (file: PatchFile, commitURL?: string): CodeDiff => {
     const codeOld = pyCode.genCode(false)
     const codeNew = pyCode.genCode(true)
     const diff = []
-    if (options.disableLiteAST) {
+    if (!useLiteAST) {
         ASTDiffAlt(
             getAST(codeOld)['ast_object'],
             getAST(codeNew)['ast_object'],
@@ -163,12 +198,27 @@ const loadPatchFile = (file: PatchFile, commitURL?: string): CodeDiff => {
     }
 }
 
-const loadCommitURL = async (commit: string): Promise<CodeDiff[]> => {
-    const diffs: CodeDiff[] = []
+async function loadCommitURL(
+    commit: string,
+    useLiteAST: false
+): Promise<CodeDiff<ASTDiffRes>[]>
+async function loadCommitURL(
+    commit: string,
+    useLiteAST: true
+): Promise<CodeDiff<LiteASTDiffRes>[]>
+async function loadCommitURL(
+    commit: string,
+    useLiteAST: boolean = true
+): Promise<CodeDiff<object>[]> {
+    const diffs = []
     const files = await fetchCommit(commit)
     for (const file of files) {
         try {
-            diffs.push(loadPatchFile(file, commit))
+            if (useLiteAST) {
+                diffs.push(loadPatchFile(file, commit, true))
+            } else {
+                diffs.push(loadPatchFile(file, commit, false))
+            }
         } catch (e) {
             console.error(e)
             continue

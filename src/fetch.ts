@@ -99,10 +99,15 @@ export type PatchFile = {
 }
 
 export const fetchCommit = async (commitUri: string): Promise<PatchFile[]> => {
-    const commit = parseCommitUri(commitUri)
-    if (!commit) return []
-    const apiUri = `https://api.github.com/repos/${commit.owner}/${commit.repo}/commits/${commit.commit_id}`
-    const res = await fetch(apiUri, 'GET', {
+    let url: string
+    if (commitUri.match(/api\.github\.com\/repos\//)) {
+        url = commitUri
+    } else {
+        const commit = parseCommitUri(commitUri)
+        if (!commit) return []
+        url = `https://api.github.com/repos/${commit.owner}/${commit.repo}/commits/${commit.commit_id}`
+    }
+    const res = await fetch(url, 'GET', {
         Authorization: OPT.githubToken ? `token ${OPT.githubToken}` : '',
     })
     if (res.err) {
