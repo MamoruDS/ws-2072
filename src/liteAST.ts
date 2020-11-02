@@ -3,48 +3,10 @@ import { genRandomHex, getChanges } from './utils'
 
 import { ASTNode } from './ast'
 
+import { NodeType, ASTField, Tag } from './liteAST.constant'
+import { isTypeInGroup } from './liteAST.constant'
+
 class LiteAST {}
-
-type NodeType =
-    | 'argument'
-    | 'assign'
-    | 'called'
-    | 'class'
-    | 'condition'
-    | 'constant'
-    | 'document'
-    | 'expression'
-    | 'function'
-    | 'function.async'
-    | 'index'
-    | 'keyword'
-    | 'lambda'
-    | 'loop'
-    | 'module'
-    | 'operator'
-    | 'path'
-    | 'reserved'
-    | 'subscript'
-    | 'tuple'
-    | 'variable'
-    | 'vector'
-
-type ASTField = 'body' | 'orelse' | 'args'
-
-type Tag =
-    | 'child'
-    | 'lhs'
-    | 'rhs'
-    | 'op'
-    | 'arg'
-    | 'body'
-    | 'base'
-    | 'dim'
-    | 'lower'
-    | 'upper'
-    | 'step'
-    | 'target'
-    | 'else'
 
 type TagChild = {
     tag: Tag
@@ -86,6 +48,8 @@ export class LiteNode {
         this._value = value
         this._children = []
         this._tempID = genRandomHex(6)
+        this._offset = [null, null]
+        this._line = [null, null]
         this._debug = false
     }
 
@@ -128,6 +92,9 @@ export class LiteNode {
         const _doc = this._document || this.getRootNode().document
         const _line = this.line
         const _offset = this.offset
+        if (isTypeInGroup(this.type, 'nullPos')) {
+            return this._value // TBD
+        }
         if (_doc && _line[0] != null) {
             const _local = _doc.split('\n').slice(_line[0] - 1, _line[1])
             const _1 = _local.length - 1
@@ -139,6 +106,7 @@ export class LiteNode {
             }
             return _local.join('\n')
         }
+        // undefined document causing failed in _indentFix
         return undefined // TBD
     }
     get code(): string {
@@ -288,7 +256,9 @@ export class LiteNode {
             }
         }
         if (this._type == 'function' || this._type == 'function.async') {
+            // getting lines of whole document
             const lines = this.getRootNode().document.split('\n')
+            // finding head of function
             while (lines[line[0] - 1].match(/^\s{0,}(async\s)?def\s/) == null) {
                 line[0] -= 1
                 if (line[0] == 0) {
@@ -296,7 +266,9 @@ export class LiteNode {
                     break
                 }
             }
+            // finding tail line number by child
             for (const _child of this._children) {
+                // switch to node.line when child.line independent with parent's
                 if (_child.node._line[1] > line[1]) {
                     line[1] = _child.node._line[1]
                 }
@@ -382,12 +354,11 @@ export class LiteNode {
             let node: LiteNode = this
             while (true) {
                 if (typeof node.parentNode == 'undefined') break
-                if (
-                    ['function', 'function.async', 'document'].indexOf(
-                        node.parentNode.type
-                    ) == -1
-                )
+                if (!isTypeInGroup(node.parentNode.type, 'bigScope')) {
                     node = node.parentNode
+                } else {
+                    break
+                }
             }
             return _indentFix(node.document)
         }
@@ -402,8 +373,11 @@ export class LiteNode {
             let node: LiteNode = this
             while (true) {
                 if (typeof node.parentNode == 'undefined') break
-                if (['function', 'function.async'].indexOf(node.type) == -1)
+                if (!isTypeInGroup(node.type, 'pyFn')) {
                     node = node.parentNode
+                } else {
+                    break
+                }
             }
             return _indentFix(node.document)
         }
@@ -748,7 +722,10 @@ const diffLiteNode = (
         const check = pending.shift()
         const _lhsChildren = check.lhs.node.childNodes
         const _rhsChildren = check.rhs.node.childNodes
-        if (_lhsChildren.length > 0 && _rhsChildren.length > 0) {
+        if (
+            (_lhsChildren.length > 0 && _rhsChildren.length > 0) ||
+            check.rhs.node.type == 'document'
+        ) {
             const _diff = getChanges<TagChild>(
                 _lhsChildren,
                 _rhsChildren,
@@ -1066,7 +1043,9 @@ const _loadFromAST = (
         prop.type = 'path'
         prop.hasChild = false
         prop.node = getExprPath(node)
-        if (father) father.appendChild('child', prop.node, inf.appendAtBegin)
+        if (father) {
+            father.appendChild(inf.tag || 'child', prop.node, inf.appendAtBegin)
+        }
     } else if (_t == 'AugAssign') {
         prop.type = 'assign'
         prop.hasChild = false
@@ -1127,8 +1106,9 @@ const _loadFromAST = (
         prop.type = 'path'
         prop.hasChild = false
         prop.node = getExprPath(node)
-        if (father)
+        if (father) {
             father.appendChild(inf.tag || 'child', prop.node, inf.appendAtBegin)
+        }
     } else if (_t == 'ClassDef') {
         prop.type = 'class'
         prop.value = node['name']
@@ -1395,7 +1375,9 @@ const _loadFromAST = (
         prop.type = 'path'
         prop.hasChild = false
         prop.node = getExprPath(node)
-        if (father) father.appendChild('child', prop.node, inf.appendAtBegin)
+        if (father) {
+            father.appendChild(inf.tag || 'child', prop.node, inf.appendAtBegin)
+        }
     } else if (_t == 'Tuple') {
         prop.type = 'tuple'
         for (const _item of node['elts']) {
