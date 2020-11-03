@@ -577,6 +577,8 @@ const diffLiteNode = (
                     getExtPYType(lhs.node.value) == getExtPYType(rhs.node.value)
             } else if (lhs.node.type == 'document') {
                 res = false
+            } else if (isTypeInGroup(lhs.node.type, 'pyFn')) {
+                res = lhs.node.value == rhs.node.value
             } else {
                 res = true
             }
