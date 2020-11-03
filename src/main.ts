@@ -25,6 +25,7 @@ type LiteASTDiffRes = {
 
 type CodeDiff<T> = {
     url: string
+    filename: string
     code_old: string
     code_new: string
     diff: T[]
@@ -135,6 +136,7 @@ function loadFromSnip(
     }
     return {
         url: undefined,
+        filename: undefined,
         code_old: snipOld,
         code_new: snipNew,
         diff,
@@ -192,6 +194,7 @@ function loadPatchFile(
     }
     return {
         url: commitURL,
+        filename: file.filename,
         code_old: codeOld,
         code_new: codeNew,
         diff: diff,
