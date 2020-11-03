@@ -1,7 +1,7 @@
 import { deepStrictEqual } from 'assert'
 import { genRandomHex, getChanges } from './utils'
 
-import { ASTNode } from './ast'
+import { ASTNode, KEY_IGNORE } from './ast'
 
 import { NodeType, ASTField, Tag } from './liteAST.constant'
 import { isTypeInGroup } from './liteAST.constant'
@@ -949,6 +949,9 @@ const _loadFromAST = (
     inf: {
         tag?: Tag
         appendAtBegin?: boolean
+    } = {},
+    options: {
+        plainExceptHandlerType?: boolean
     } = {}
 ): LiteNode => {
     const prop = {
@@ -1157,6 +1160,26 @@ const _loadFromAST = (
         GSOperator()
     } else if (_t == 'Eq') {
         GSOperator()
+    } else if (_t == 'ExceptHandler') {
+        prop.type = 'except'
+        if (options.plainExceptHandlerType) {
+            try {
+                prop.value =
+                    node['type']['node'] == 'Name'
+                        ? node['type']['id']
+                        : undefined
+            } catch {
+                prop.value = undefined
+            }
+        } else {
+            if (node['type']) {
+                _loadFromAST(node['type'], prop.this, {
+                    tag: 'body',
+                    appendAtBegin: true,
+                })
+            }
+        }
+        prop.hasChild = true
     } else if (_t == 'Expr') {
         prop.node = _loadFromAST(node['value'] as ASTNode, father, inf)
     } else if (_t == 'ExtSlice') {
@@ -1380,6 +1403,9 @@ const _loadFromAST = (
         if (father) {
             father.appendChild(inf.tag || 'child', prop.node, inf.appendAtBegin)
         }
+    } else if (_t == 'Try') {
+        prop.type = 'try'
+        prop.hasChild = true
     } else if (_t == 'Tuple') {
         prop.type = 'tuple'
         for (const _item of node['elts']) {
@@ -1453,16 +1479,22 @@ const _loadFromAST = (
         prop.node.appendChild(_c.tag, _c.node)
     }
     const tagGen = (field: ASTField): Tag => {
-        if (field == 'body') {
-            return 'child'
-        }
-        if (field == 'orelse') {
-            return 'else'
-        }
-        return 'child'
+        const _f = {
+            body: 'child', // TODO: using body instead
+            finalbody: 'finally',
+            handlers: 'catch',
+            orelse: 'else',
+        } as { [key in ASTField]: Tag }
+        return _f[field] || 'child'
     }
     if (prop.hasChild) {
-        for (const field of ['body', 'orelse', 'args'] as ASTField[]) {
+        for (const field of [
+            'args',
+            'body',
+            'finalbody',
+            'handlers',
+            'orelse',
+        ] as ASTField[]) {
             if (Array.isArray(node[field])) {
                 const _f = node[field]
                 if (Array.isArray(_f)) {

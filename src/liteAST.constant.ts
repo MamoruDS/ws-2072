@@ -7,6 +7,7 @@ type NodeType =
     | 'constant'
     | 'document'
     | 'expression'
+    | 'except'
     | 'function'
     | 'function.async'
     | 'index'
@@ -18,11 +19,12 @@ type NodeType =
     | 'path'
     | 'reserved'
     | 'subscript'
+    | 'try'
     | 'tuple'
     | 'variable'
     | 'vector'
 
-type ASTField = 'body' | 'orelse' | 'args'
+type ASTField = 'args' | 'body' | 'finalbody' | 'handlers' | 'orelse'
 
 type Tag =
     | 'child'
@@ -38,6 +40,8 @@ type Tag =
     | 'step'
     | 'target'
     | 'else'
+    | 'finally'
+    | 'catch'
 
 export { NodeType, ASTField, Tag }
 

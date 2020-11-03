@@ -9,7 +9,7 @@ import { deepStrictEqual } from 'assert'
 
 const TEMP_PATH = 'temp'
 
-const KEY_IGNORE: string[] = [
+export const KEY_IGNORE: string[] = [
     'lineno',
     'end_lineno',
     'col_offset',
@@ -81,6 +81,7 @@ export type ASTNode = {
     names?: ASTNode[]
     asname?: string
     module?: string
+    type?: ASTNode
 }
 
 type NodeCount = number | null

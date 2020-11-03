@@ -21,6 +21,7 @@ export type ASTType =
     | 'Delete'
     | 'Div'
     | 'Eq'
+    | 'ExceptHandler'
     | 'Expr'
     | 'ExtSlice'
     | 'For'
@@ -54,6 +55,7 @@ export type ASTType =
     | 'Store'
     | 'Sub'
     | 'Subscript'
+    | 'Try'
     | 'Tuple'
     | 'USub'
     | 'UnaryOp'
@@ -88,6 +90,7 @@ export const ASTTypeList: ASTType[] = [
     'Delete',
     'Div',
     'Eq',
+    'ExceptHandler',
     'Expr',
     'ExtSlice',
     'For',
@@ -121,6 +124,7 @@ export const ASTTypeList: ASTType[] = [
     'Store',
     'Sub',
     'Subscript',
+    'Try',
     'Tuple',
     'USub',
     'UnaryOp',

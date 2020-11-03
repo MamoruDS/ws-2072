@@ -63,6 +63,8 @@ const list = [
     'Del',
     'AugAssign',
     'Lambda',
+    'Try',
+    'ExceptHandler'
 ]
 
 let res
