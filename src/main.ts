@@ -19,6 +19,10 @@ type LiteASTDiffRes = {
     line: [string, string]
     snippet: [string, string]
     type: string
+    nodeCnt: [number | null, number | null]
+    nodeDelta: number
+    topLineNr?: [number | null, number | null]
+    botLineNr?: [number | null, number | null]
     path: [string, string]
     node: [object, object]
 }
@@ -26,6 +30,7 @@ type LiteASTDiffRes = {
 type CodeDiff<T> = {
     url: string
     filename: string
+    failed?: boolean
     code_old: string
     code_new: string
     diff: T[]
@@ -54,16 +59,23 @@ const LiteASTDiff = (
         }
         return undefined
     }
-    const lhsAST = getAST(lhsCode)['ast_object']
-    const rhsAST = getAST(rhsCode)['ast_object']
-    const _lhs = loadFromAST(lhsAST)
-    const _rhs = loadFromAST(rhsAST)
+    const lhsAST = getAST(lhsCode)
+    const rhsAST = getAST(rhsCode)
+    if (lhsAST.err || rhsAST.err) {
+        return undefined
+    }
+    const _lhs = loadFromAST(lhsAST['ast_object'])
+    const _rhs = loadFromAST(rhsAST['ast_object'])
     _lhs.setDocument(lhsCode)
     _rhs.setDocument(rhsCode)
     const res = diffLiteNode(_lhs, _rhs)
     return res.map((_diff) => {
         const lNode = getNodeFrom(_lhs, _diff.id[0])
         const rNode = getNodeFrom(_rhs, _diff.id[1])
+        const nodeCnt: [number, number] = [
+            lNode ? lNode.getAllSubNodes().length : null,
+            rNode ? rNode.getAllSubNodes().length : null,
+        ]
         return {
             line: [getSnippet(lNode, 'line'), getSnippet(rNode, 'line')],
             snippet: [
@@ -71,6 +83,16 @@ const LiteASTDiff = (
                 getSnippet(rNode, 'function'),
             ],
             type: _diff.type,
+            nodeCnt,
+            nodeDelta: nodeCnt[1] - nodeCnt[0],
+            topLineNr: [
+                lNode ? lNode.line[0] : null,
+                rNode ? rNode.line[0] : null,
+            ],
+            botLineNr: [
+                lNode ? lNode.line[1] : null,
+                rNode ? rNode.line[1] : null,
+            ],
             path: [
                 lNode
                     ? lNode
@@ -130,9 +152,21 @@ function loadFromSnip(
             }
         )
     } else {
-        LiteASTDiff(snipOld, snipNew).forEach((_diff) => {
-            diff.push(_diff)
-        })
+        const liteDiff = LiteASTDiff(snipOld, snipNew)
+        if (typeof liteDiff == 'undefined') {
+            return {
+                url: undefined,
+                filename: undefined,
+                failed: true,
+                code_old: snipOld,
+                code_new: snipNew,
+                diff,
+            }
+        } else {
+            liteDiff.forEach((_diff) => {
+                diff.push(_diff)
+            })
+        }
     }
     return {
         url: undefined,
@@ -188,9 +222,21 @@ function loadPatchFile(
             diff.push(_diff)
         })
     } else {
-        LiteASTDiff(codeOld, codeNew).forEach((_diff) => {
-            diff.push(_diff)
-        })
+        const liteDiff = LiteASTDiff(codeOld, codeNew)
+        if (typeof liteDiff == 'undefined') {
+            return {
+                url: commitURL,
+                filename: file.filename,
+                failed: true,
+                code_old: codeOld,
+                code_new: codeNew,
+                diff,
+            }
+        } else {
+            liteDiff.forEach((_diff) => {
+                diff.push(_diff)
+            })
+        }
     }
     return {
         url: commitURL,
