@@ -64,7 +64,14 @@ const list = [
     'AugAssign',
     'Lambda',
     'Try',
-    'ExceptHandler'
+    'ExceptHandler',
+    'Raise',
+    'AnnAssign',
+    'Invert',
+    'Starred',
+    'Is',
+    'While',
+    'Dict'
 ]
 
 let res

@@ -16,7 +16,7 @@ export const KEY_IGNORE: string[] = [
     'end_col_offset',
 ]
 
-const rmIgnoreKey = <T extends object>(input: T): T => {
+export const rmKeys = <T extends object>(input: T, keys: string[]): T => {
     const re = new RegExp(
         `((${KEY_IGNORE.map((key) => {
             return `("${key}")`
@@ -55,6 +55,7 @@ export type ASTNode = {
     body?: ASTNode | ASTNode[]
     orelse?: ASTNode[]
     value?: string | ASTNode
+    keys?: ASTNode[]
     values?: ASTNode[]
     targets?: ASTNode[]
     elts?: ASTNode[]
@@ -82,6 +83,7 @@ export type ASTNode = {
     asname?: string
     module?: string
     type?: ASTNode
+    exc?: ASTNode
 }
 
 type NodeCount = number | null
@@ -435,8 +437,8 @@ export const ASTDiffAlt = (
             if (lhs.node == 'If' && options.strictIfConditionCheck) {
                 try {
                     deepStrictEqual(
-                        rmIgnoreKey(lhs['test']),
-                        rmIgnoreKey(rhs['test'])
+                        rmKeys(lhs['test'], KEY_IGNORE),
+                        rmKeys(rhs['test'], KEY_IGNORE)
                     )
                     return true
                 } catch (e) {
@@ -456,8 +458,8 @@ export const ASTDiffAlt = (
                 }).join('|')}):\\s{0,}\\d+,{0,})`,
                 'gm'
             )
-            const _lhs = rmIgnoreKey(lhs)
-            const _rhs = rmIgnoreKey(rhs)
+            const _lhs = rmKeys(lhs, KEY_IGNORE)
+            const _rhs = rmKeys(rhs, KEY_IGNORE)
             try {
                 deepStrictEqual(_lhs, _rhs)
                 res = true

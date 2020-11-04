@@ -1,7 +1,7 @@
 import { deepStrictEqual } from 'assert'
 import { genRandomHex, getChanges } from './utils'
 
-import { ASTNode, KEY_IGNORE } from './ast'
+import { ASTNode, KEY_IGNORE, rmKeys } from './ast'
 
 import { NodeType, ASTField, Tag } from './liteAST.constant'
 import { isTypeInGroup } from './liteAST.constant'
@@ -952,7 +952,11 @@ const _loadFromAST = (
     } = {},
     options: {
         plainExceptHandlerType?: boolean
-    } = {}
+        parseDict?: boolean
+    } = {
+        plainExceptHandlerType: false,
+        // parseDict: true,
+    }
 ): LiteNode => {
     const prop = {
         value: null,
@@ -977,6 +981,7 @@ const _loadFromAST = (
             BitAnd: 'and',
             Div: 'division',
             Eq: 'eq',
+            Is: 'is',
             Gt: 'gt',
             Gte: 'geq',
             Lt: 'lt',
@@ -999,6 +1004,8 @@ const _loadFromAST = (
         GSOperator()
     } else if (_t == 'And') {
         GSOperator()
+    } else if (_t == 'AnnAssign') {
+        // ignored
     } else if (_t == 'Assert') {
         prop.type = 'reserved'
         prop.value = 'assert'
@@ -1156,6 +1163,25 @@ const _loadFromAST = (
                 tag: 'body',
             })
         }
+    } else if (_t == 'Dict') {
+        if (options.parseDict) {
+            prop.type = 'object'
+            prop.hasChild = false
+            for (const key of node['keys']) {
+                _loadFromAST(key, prop.this, {
+                    tag: 'key',
+                })
+            }
+            for (const key of node['values']) {
+                _loadFromAST(key, prop.this, {
+                    tag: 'val',
+                })
+            }
+        } else {
+            prop.type = 'constant'
+            prop.value = JSON.stringify(rmKeys(node, KEY_IGNORE))
+            prop.hasChild = false
+        }
     } else if (_t == 'Div') {
         GSOperator()
     } else if (_t == 'Eq') {
@@ -1305,6 +1331,10 @@ const _loadFromAST = (
         _loadFromAST(node['value'] as ASTNode, prop.this, {
             tag: 'body',
         })
+    } else if (_t == 'Invert') {
+        // implemented in UnaryOp
+    } else if (_t == 'Is') {
+        GSOperator()
     } else if (_t == 'JoinedStr') {
         // TODO:
     } else if (_t == 'Lambda') {
@@ -1374,6 +1404,15 @@ const _loadFromAST = (
         prop.type = 'reserved'
         prop.value = 'pass'
         prop.hasChild = false
+    } else if (_t == 'Raise') {
+        prop.type = 'reserved'
+        prop.value = 'raise'
+        prop.hasChild = false
+        if (node['exc']) {
+            _loadFromAST(node['exc'], prop.this, {
+                tag: 'body',
+            })
+        }
     } else if (_t == 'Return') {
         prop.type = 'reserved'
         prop.value = 'return'
@@ -1392,6 +1431,12 @@ const _loadFromAST = (
                 })
             }
         }
+    } else if (_t == 'Starred') {
+        prop.type = 'reserved'
+        prop.value = 'starred'
+        _loadFromAST(node['value'] as ASTNode, prop.this, {
+            tag: 'body',
+        })
     } else if (_t == 'Store') {
         // ignored
     } else if (_t == 'Sub') {
@@ -1416,6 +1461,7 @@ const _loadFromAST = (
     } else if (_t == 'USub') {
         GSOperator()
     } else if (_t == 'UnaryOp') {
+        // TODO: useful UnaryOp in vary cases
         if (node['op']['node'] == 'Not') {
             prop.type = 'expression'
             prop.hasChild = false
@@ -1442,11 +1488,24 @@ const _loadFromAST = (
             _loadFromAST(node['operand'], prop.this, {
                 tag: 'rhs',
             })
+        } else if (node['op']['node'] == 'Invert') {
+            prop.type = 'reserved'
+            prop.value = 'invert'
+            prop.hasChild = false
+            _loadFromAST(node['operand'], prop.this, {
+                tag: 'body',
+            })
         } else {
-            // throw new Error(
-            //     `cannot handle unknown UnaryOP with operator: "${node['op']['node']}"`
-            // )
+            throw new Error(
+                `cannot handle unknown UnaryOP with operator: "${node['op']['node']}"`
+            )
         }
+    } else if (_t == 'While') {
+        prop.type = 'loop'
+        prop.hasChild = true
+        _loadFromAST(node['test'], prop.this, {
+            tag: 'body',
+        })
     } else if (_t == 'alias') {
         // ignored
     } else if (_t == 'arg') {

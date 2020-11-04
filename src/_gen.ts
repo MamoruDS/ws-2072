@@ -1,6 +1,7 @@
 export type ASTType = 
     | 'Add'
     | 'And'
+    | 'AnnAssign'
     | 'Assert'
     | 'Assign'
     | 'AsyncFunctionDef'
@@ -19,6 +20,7 @@ export type ASTType =
     | 'Continue'
     | 'Del'
     | 'Delete'
+    | 'Dict'
     | 'Div'
     | 'Eq'
     | 'ExceptHandler'
@@ -35,6 +37,8 @@ export type ASTType =
     | 'ImportFrom'
     | 'In'
     | 'Index'
+    | 'Invert'
+    | 'Is'
     | 'JoinedStr'
     | 'Lambda'
     | 'List'
@@ -50,8 +54,10 @@ export type ASTType =
     | 'NotEq'
     | 'Or'
     | 'Pass'
+    | 'Raise'
     | 'Return'
     | 'Slice'
+    | 'Starred'
     | 'Store'
     | 'Sub'
     | 'Subscript'
@@ -59,6 +65,7 @@ export type ASTType =
     | 'Tuple'
     | 'USub'
     | 'UnaryOp'
+    | 'While'
     | '_LiteAST.Module'
     | 'alias'
     | 'arg'
@@ -70,6 +77,7 @@ export type ASTType =
 export const ASTTypeList: ASTType[] = [
     'Add',
     'And',
+    'AnnAssign',
     'Assert',
     'Assign',
     'AsyncFunctionDef',
@@ -88,6 +96,7 @@ export const ASTTypeList: ASTType[] = [
     'Continue',
     'Del',
     'Delete',
+    'Dict',
     'Div',
     'Eq',
     'ExceptHandler',
@@ -104,6 +113,8 @@ export const ASTTypeList: ASTType[] = [
     'ImportFrom',
     'In',
     'Index',
+    'Invert',
+    'Is',
     'JoinedStr',
     'Lambda',
     'List',
@@ -119,8 +130,10 @@ export const ASTTypeList: ASTType[] = [
     'NotEq',
     'Or',
     'Pass',
+    'Raise',
     'Return',
     'Slice',
+    'Starred',
     'Store',
     'Sub',
     'Subscript',
@@ -128,6 +141,7 @@ export const ASTTypeList: ASTType[] = [
     'Tuple',
     'USub',
     'UnaryOp',
+    'While',
     '_LiteAST.Module',
     'alias',
     'arg',

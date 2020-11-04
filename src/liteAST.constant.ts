@@ -5,6 +5,7 @@ type NodeType =
     | 'class'
     | 'condition'
     | 'constant'
+    | 'object'
     | 'document'
     | 'expression'
     | 'except'
@@ -42,6 +43,8 @@ type Tag =
     | 'else'
     | 'finally'
     | 'catch'
+    | 'key'
+    | 'val'
 
 export { NodeType, ASTField, Tag }
 
