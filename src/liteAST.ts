@@ -1,7 +1,7 @@
 import { deepStrictEqual } from 'assert'
 import { genRandomHex, getChanges } from './utils'
 
-import { ASTNode, KEY_IGNORE, rmKeys } from './ast'
+import { ASTNode, getAST, KEY_IGNORE, rmKeys } from './ast'
 
 import { NodeType, ASTField, Tag } from './liteAST.constant'
 import { isTypeInGroup } from './liteAST.constant'
@@ -332,6 +332,18 @@ export class LiteNode {
         }
     ): string {
         const _indentFix = (lines: string): string => {
+            try {
+                lines.split('\n')
+            } catch (e) {
+                if (e instanceof TypeError) {
+                    return this.getDocument({
+                        indentFix: options.indentFix,
+                        minScopeType: 'scope',
+                    })
+                } else {
+                    throw e
+                }
+            }
             const _lines = lines.split('\n')
             let _minIndent = Infinity
             _lines.forEach((_line) => {
@@ -467,6 +479,7 @@ export class LiteNode {
         })
     }
     getAllSubNodes = (): LiteNode[] => {
+        // this method will return `this`
         return this._walk(this).filter((node) => {
             return true
         })
@@ -528,7 +541,7 @@ export class LiteNode {
 
 type LiteASTDiffRes = {
     id: [string, string]
-    type: string
+    type: 'node_added' | 'node_deleted' | 'value_modified'
 }
 
 const diffLiteNode = (
@@ -953,9 +966,13 @@ const _loadFromAST = (
     options: {
         plainExceptHandlerType?: boolean
         parseDict?: boolean
+        panicUnknownUnaryOp?: boolean
+        lessTypeSetAsTuple?: boolean
     } = {
         plainExceptHandlerType: false,
         // parseDict: true,
+        panicUnknownUnaryOp: false,
+        lessTypeSetAsTuple: false,
     }
 ): LiteNode => {
     const prop = {
@@ -977,23 +994,30 @@ const _loadFromAST = (
         const list = {
             Add: 'add',
             And: 'boolAnd',
-            BitOr: 'or',
             BitAnd: 'and',
+            BitOr: 'or',
+            BitXor: 'xor',
             Div: 'division',
             Eq: 'eq',
+            FloorDiv: 'divisionFloor',
             Is: 'is',
+            IsNot: 'isnot',
             Gt: 'gt',
             Gte: 'geq',
+            LShift: 'lShift',
             Lt: 'lt',
             LtE: 'leq',
             Mod: 'mod',
             Mult: 'multiple',
             Not: 'boolNot',
             NotEq: 'neq',
+            NotIn: 'notIn',
             Or: 'boolOr',
+            Pow: 'power',
+            RShift: 'rShift',
             Sub: 'minus',
-            // TODO:
-            // USub:
+            UAdd: 'negative',
+            USub: 'positive',
         }
         prop.type = 'operator'
         prop.value = list[node['node']]
@@ -1098,6 +1122,8 @@ const _loadFromAST = (
     } else if (_t == 'BitAnd') {
         GSOperator()
     } else if (_t == 'BitOr') {
+        GSOperator()
+    } else if (_t == 'BitXor') {
         GSOperator()
     } else if (_t == 'BoolOp') {
         prop.type = 'expression'
@@ -1217,6 +1243,8 @@ const _loadFromAST = (
                 tag: 'dim',
             })
         }
+    } else if (_t == 'FloorDiv') {
+        GSOperator()
     } else if (_t == 'For') {
         prop.type = 'loop'
         prop.hasChild = true
@@ -1257,6 +1285,24 @@ const _loadFromAST = (
                     }
                 }
             }
+        }
+    } else if (_t == 'GeneratorExp') {
+        // TODO:
+    } else if (_t == 'Global') {
+        prop.type = 'reserved'
+        prop.value = 'global'
+        prop.hasChild = false
+        for (const v of node['names'] as string[]) {
+            _loadFromAST(
+                {
+                    node: 'Name',
+                    id: v,
+                },
+                prop.this,
+                {
+                    tag: 'body',
+                }
+            )
         }
     } else if (_t == 'Gt') {
         GSOperator()
@@ -1335,8 +1381,12 @@ const _loadFromAST = (
         // implemented in UnaryOp
     } else if (_t == 'Is') {
         GSOperator()
+    } else if (_t == 'IsNot') {
+        GSOperator()
     } else if (_t == 'JoinedStr') {
         // TODO:
+    } else if (_t == 'LShift') {
+        GSOperator()
     } else if (_t == 'Lambda') {
         prop.type = 'lambda'
         prop.hasChild = false
@@ -1394,9 +1444,27 @@ const _loadFromAST = (
         prop.type = 'variable'
         prop.value = node['id']
         prop.hasChild = false
+    } else if (_t == 'Nonlocal') {
+        prop.type = 'reserved'
+        prop.value = 'nonlocal'
+        prop.hasChild = false
+        for (const v of node['names'] as string[]) {
+            _loadFromAST(
+                {
+                    node: 'Name',
+                    id: v,
+                },
+                prop.this,
+                {
+                    tag: 'body',
+                }
+            )
+        }
     } else if (_t == 'Not') {
         GSOperator()
     } else if (_t == 'NotEq') {
+        GSOperator()
+    } else if (_t == 'NotIn') {
         GSOperator()
     } else if (_t == 'Or') {
         GSOperator()
@@ -1404,6 +1472,10 @@ const _loadFromAST = (
         prop.type = 'reserved'
         prop.value = 'pass'
         prop.hasChild = false
+    } else if (_t == 'Pow') {
+        GSOperator()
+    } else if (_t == 'RShift') {
+        GSOperator()
     } else if (_t == 'Raise') {
         prop.type = 'reserved'
         prop.value = 'raise'
@@ -1420,6 +1492,18 @@ const _loadFromAST = (
         _loadFromAST(node['value'] as ASTNode, prop.this, {
             tag: 'body',
         })
+    } else if (_t == 'Set') {
+        if (options.lessTypeSetAsTuple) {
+            prop.type = 'tuple'
+        } else {
+            prop.type = 'set'
+        }
+        prop.hasChild = false
+        for (const _item of node['elts']) {
+            _loadFromAST(_item, prop.this, {
+                tag: 'child',
+            })
+        }
     } else if (_t == 'Slice') {
         prop.type = 'index'
         prop.value = 'slice'
@@ -1458,6 +1542,8 @@ const _loadFromAST = (
                 tag: 'child',
             })
         }
+    } else if (_t == 'UAdd') {
+        GSOperator()
     } else if (_t == 'USub') {
         GSOperator()
     } else if (_t == 'UnaryOp') {
@@ -1495,15 +1581,66 @@ const _loadFromAST = (
             _loadFromAST(node['operand'], prop.this, {
                 tag: 'body',
             })
-        } else {
-            throw new Error(
-                `cannot handle unknown UnaryOP with operator: "${node['op']['node']}"`
+        } else if (['USub', 'UAdd'].indexOf(node['op']['node']) != -1) {
+            prop.type = 'expression'
+            prop.hasChild = false
+            _loadFromAST(
+                {
+                    node: 'Constant',
+                    value: '0',
+                    kind: 'None',
+                },
+                prop.this,
+                {
+                    tag: 'lhs',
+                }
             )
+            _loadFromAST(
+                {
+                    node:
+                        node['op']['node'] == 'USub'
+                            ? 'Sub'
+                            : node['op']['node'] == 'UAdd'
+                            ? 'Add'
+                            : undefined,
+                },
+                prop.this,
+                {
+                    tag: 'op',
+                }
+            )
+            _loadFromAST(node['operand'], prop.this, {
+                tag: 'rhs',
+            })
+        } else {
+            if (options.panicUnknownUnaryOp) {
+                throw new Error(
+                    `cannot handle unknown UnaryOP with operator: "${node['op']['node']}"`
+                )
+            }
         }
     } else if (_t == 'While') {
         prop.type = 'loop'
         prop.hasChild = true
         _loadFromAST(node['test'], prop.this, {
+            tag: 'body',
+        })
+    } else if (_t == 'With') {
+        // needs more details
+        if (
+            node['items']['node'] == 'withitem' &&
+            node['items']['node']['context_expr']
+        ) {
+            prop.type = 'with'
+            prop.hasChild = true
+            _loadFromAST(node['items']['node']['context_expr'], prop.this, {
+                tag: 'body',
+            })
+        }
+    } else if (_t == 'Yield') {
+        prop.type = 'reserved'
+        prop.value = 'yield'
+        _loadFromAST(node['value'] as ASTNode, prop.this, {
             tag: 'body',
         })
     } else if (_t == 'alias') {
@@ -1579,4 +1716,9 @@ const loadFromAST = (node: ASTNode): LiteNode => {
     return _loadFromAST(node)
 }
 
-export { LiteAST, diffLiteNode, loadFromAST }
+const loadFromCode = (code: string): LiteNode => {
+    const { ast_object } = getAST(code)
+    return loadFromAST(ast_object)
+}
+
+export { LiteAST, diffLiteNode, loadFromAST, loadFromCode }

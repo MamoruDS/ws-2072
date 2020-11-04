@@ -11,6 +11,7 @@ export type ASTType =
     | 'BinOp'
     | 'BitAnd'
     | 'BitOr'
+    | 'BitXor'
     | 'BoolOp'
     | 'Break'
     | 'Call'
@@ -26,9 +27,12 @@ export type ASTType =
     | 'ExceptHandler'
     | 'Expr'
     | 'ExtSlice'
+    | 'FloorDiv'
     | 'For'
     | 'FormattedValue'
     | 'FunctionDef'
+    | 'GeneratorExp'
+    | 'Global'
     | 'Gt'
     | 'GtE'
     | 'If'
@@ -39,23 +43,31 @@ export type ASTType =
     | 'Index'
     | 'Invert'
     | 'Is'
+    | 'IsNot'
     | 'JoinedStr'
+    | 'LShift'
     | 'Lambda'
     | 'List'
     | 'ListComp'
     | 'Load'
     | 'Lt'
     | 'LtE'
+    | 'MatMult'
     | 'Mod'
     | 'Module'
     | 'Mult'
     | 'Name'
+    | 'Nonlocal'
     | 'Not'
     | 'NotEq'
+    | 'NotIn'
     | 'Or'
     | 'Pass'
+    | 'Pow'
+    | 'RShift'
     | 'Raise'
     | 'Return'
+    | 'Set'
     | 'Slice'
     | 'Starred'
     | 'Store'
@@ -63,15 +75,19 @@ export type ASTType =
     | 'Subscript'
     | 'Try'
     | 'Tuple'
+    | 'UAdd'
     | 'USub'
     | 'UnaryOp'
     | 'While'
+    | 'With'
+    | 'Yield'
     | '_LiteAST.Module'
     | 'alias'
     | 'arg'
     | 'arguments'
     | 'comprehension'
     | 'keyword'
+    | 'withitem'
 
 
 export const ASTTypeList: ASTType[] = [
@@ -87,6 +103,7 @@ export const ASTTypeList: ASTType[] = [
     'BinOp',
     'BitAnd',
     'BitOr',
+    'BitXor',
     'BoolOp',
     'Break',
     'Call',
@@ -102,9 +119,12 @@ export const ASTTypeList: ASTType[] = [
     'ExceptHandler',
     'Expr',
     'ExtSlice',
+    'FloorDiv',
     'For',
     'FormattedValue',
     'FunctionDef',
+    'GeneratorExp',
+    'Global',
     'Gt',
     'GtE',
     'If',
@@ -115,23 +135,31 @@ export const ASTTypeList: ASTType[] = [
     'Index',
     'Invert',
     'Is',
+    'IsNot',
     'JoinedStr',
+    'LShift',
     'Lambda',
     'List',
     'ListComp',
     'Load',
     'Lt',
     'LtE',
+    'MatMult',
     'Mod',
     'Module',
     'Mult',
     'Name',
+    'Nonlocal',
     'Not',
     'NotEq',
+    'NotIn',
     'Or',
     'Pass',
+    'Pow',
+    'RShift',
     'Raise',
     'Return',
+    'Set',
     'Slice',
     'Starred',
     'Store',
@@ -139,13 +167,17 @@ export const ASTTypeList: ASTType[] = [
     'Subscript',
     'Try',
     'Tuple',
+    'UAdd',
     'USub',
     'UnaryOp',
     'While',
+    'With',
+    'Yield',
     '_LiteAST.Module',
     'alias',
     'arg',
     'arguments',
     'comprehension',
-    'keyword'
+    'keyword',
+    'withitem'
 ]

@@ -19,11 +19,13 @@ type NodeType =
     | 'operator'
     | 'path'
     | 'reserved'
+    | 'set'
     | 'subscript'
     | 'try'
     | 'tuple'
     | 'variable'
     | 'vector'
+    | 'with'
 
 type ASTField = 'args' | 'body' | 'finalbody' | 'handlers' | 'orelse'
 
@@ -52,12 +54,14 @@ type LiteASTGroup<T extends string> = {
     bigScope: T[]
     pyFn: T[]
     nullPos: T[]
+    lineExpression: T[]
 }
 
 const GROUP: LiteASTGroup<NodeType> = {
     bigScope: ['document', 'function', 'function.async'],
     pyFn: ['function'],
-    nullPos: ['argument'],
+    nullPos: ['argument', 'operator'],
+    lineExpression: ['assign'],
 }
 
 const isTypeInGroup = (

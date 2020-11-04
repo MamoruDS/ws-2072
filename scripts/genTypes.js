@@ -71,7 +71,23 @@ const list = [
     'Starred',
     'Is',
     'While',
-    'Dict'
+    'Dict',
+    'GeneratorExp',
+    'NotIn',
+    'IsNot',
+    'Set',
+    'With',
+    'withitem',
+    'Yield',
+    'Nonlocal',
+    'Global',
+    'LShift',
+    'RShift',
+    'FloorDiv',
+    'BitXor',
+    'Pow',
+    'MatMult',
+    'UAdd'
 ]
 
 let res
