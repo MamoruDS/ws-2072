@@ -96,44 +96,8 @@ export class PyCode {
                     return ''
                 }
             )
-
             if (line.code.length == 0) continue // skip empty line
             if (line.code.slice(0, 1) == '#') continue // skip line
-            if (
-                line.code.slice(0, 3) == '"""' &&
-                line.code.length > 3 &&
-                line.code.slice(-3) == '"""'
-            ) {
-                continue
-            }
-            if (
-                line.code.slice(0, 3) == '"""' &&
-                line.code.length > 3 &&
-                line.code.slice(-3) != '"""'
-            ) {
-                multiLineComment = true
-                continue
-            }
-            if (
-                multiLineComment &&
-                line.code.slice(0, 3) != '"""' &&
-                line.code.length >= 3 &&
-                line.code.slice(-3) == '"""'
-            ) {
-                multiLineComment = false
-                continue
-            }
-            if (line.code.slice(0, 3) == '"""' && line.code.length == 3) {
-                multiLineComment = !multiLineComment
-                continue
-            }
-
-            if (multiLineComment) continue
-
-            if (line.code.indexOf('"""') != -1) {
-                // console.log(line.code)
-            }
-
             if (line.space <= this._localMinIndent && line.space != 0) {
                 this._localMinIndent = line.space
             }
