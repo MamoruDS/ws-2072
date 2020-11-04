@@ -79,7 +79,7 @@ export type ASTNode = {
     defaults?: ASTNode[]
     kind?: 'None' | string
     operand?: ASTNode
-    names?: ASTNode[]
+    names?: ASTNode[] | string[]
     asname?: string
     module?: string
     type?: ASTNode
@@ -186,9 +186,11 @@ export const getASTNodeInfo = (node: ASTNode): NodeInfo => {
         botLineNr: node['end_lineno'],
     }
     let n = node['node']
-    if (T.indexOf(n) == -1) {
+    if (T.indexOf(n) == -1 && typeof n == 'string') {
         T.push(n)
-        console.log(`[ASTWALK] never seen before: '${n}'`)
+        console.log(
+            `[ASTWALK] never seen before: '${n}' at [${info.topLineNr},${info.botLineNr}]`
+        )
     }
 
     const _mergeInfo = (_inf: NodeInfo) => {
@@ -224,7 +226,9 @@ export const getASTNodeCnt = (obj: ASTNode | [ASTNode]): number => {
         if (typeof val == 'object' && val != null) {
             if (Array.isArray(val)) {
                 for (const item of val) {
-                    nodeCnt += getASTNodeCnt(item)
+                    if (typeof item == 'object') {
+                        nodeCnt += getASTNodeCnt(item)
+                    }
                 }
             } else {
                 nodeCnt += getASTNodeCnt(val)
@@ -409,9 +413,15 @@ export const ASTDiffAlt = (
     const astSimilar = (lhs: ASTNode, rhs: ASTNode) => {
         if (lhs.node == rhs.node) {
             if (lhs.node == 'Expr') {
-                if (lhs['value']['func']['id'] == rhs['value']['func']['id']) {
-                    return true
-                } else {
+                try {
+                    if (
+                        lhs['value']['func']['id'] == rhs['value']['func']['id']
+                    ) {
+                        return true
+                    } else {
+                        return false
+                    }
+                } catch {
                     return false
                 }
             }
