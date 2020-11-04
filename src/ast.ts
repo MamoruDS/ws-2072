@@ -18,9 +18,9 @@ export const KEY_IGNORE: string[] = [
 
 export const rmKeys = <T extends object>(input: T, keys: string[]): T => {
     const re = new RegExp(
-        `((${KEY_IGNORE.map((key) => {
+        `(,?\[\\s\]{0,}(${KEY_IGNORE.map((key) => {
             return `("${key}")`
-        }).join('|')}):\\s{0,}\\d+,{0,})`,
+        }).join('|')}):\\s{0,}\\d+)`,
         'gm'
     )
     return JSON.parse(JSON.stringify(input).replace(re, ''))
