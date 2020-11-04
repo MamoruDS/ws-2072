@@ -276,6 +276,63 @@ async function loadCommitURL(
     return diffs
 }
 
+type _DIFFRES = CodeDiff<ASTDiffRes | LiteASTDiffRes>
+
+type Summary = {
+    url: string
+    file: string
+    failed: boolean
+    changes: number
+    summary: {
+        added: number
+        deleted: number
+        modified: number
+    }
+    deltas: number[]
+}
+
+function summary(result: _DIFFRES | _DIFFRES[]): Summary[] {
+    const sum = []
+    if (Array.isArray(result)) {
+        for (const _result of result) {
+            sum.push(_summary(_result))
+        }
+        return sum
+    } else {
+        return summary([result])
+    }
+}
+
+const _summary = (result: _DIFFRES): Summary => {
+    const res = {
+        url: result.url,
+        file: result.filename,
+        failed: false,
+        changes: 0,
+        summary: {
+            added: 0,
+            deleted: 0,
+            modified: 0,
+        },
+        deltas: [],
+    }
+    if (result.failed) {
+        res.failed = true
+        return res
+    }
+    for (const _d of result.diff) {
+        if (_d.type == 'node_added') {
+            res.summary.added += 1
+        } else if (_d.type == 'node_added') {
+            res.summary.deleted += 1
+        } else {
+            res.summary.modified += 1
+        }
+        res.deltas.push(_d.nodeDelta)
+    }
+    return res
+}
+
 export { CodeDiff as CodeInfo, options as OPT }
 
 export {
@@ -283,4 +340,5 @@ export {
     loadCommitURL,
     loadPatchFile,
     LiteASTDiff as _LiteASTDiff,
+    summary,
 }
