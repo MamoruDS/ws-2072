@@ -333,7 +333,9 @@ const _summary = (result: _DIFFRES): Summary => {
     return res
 }
 
-export { CodeDiff as CodeInfo, options as OPT }
+type AltCodeDiff = CodeDiff<ASTDiffRes|LiteASTDiffRes>
+
+export { CodeDiff as CodeInfo, AltCodeDiff as AltCodeInfo, options as OPT }
 
 export {
     loadFromSnip,
