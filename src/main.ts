@@ -1,6 +1,6 @@
 import { PyCode, Changes } from './pythonParse'
 import { fetchCommit, PatchFile } from './fetch'
-import { getAST, ASTDiffAlt, ASTDiffRes, ASTNode } from './ast'
+import { getAST, ASTDiffAlt, ASTDiffRes } from './ast'
 import { diffLiteNode, LiteNode, loadFromAST } from './liteAST'
 
 const options = {
@@ -34,6 +34,46 @@ type CodeDiff<T> = {
     code_old: string
     code_new: string
     diff: T[]
+}
+
+const genCodesFromPatch = (patch: PatchFile): string[] => {
+    const changes = { '+': [], '-': [] } as Changes
+    for (const c of patch.modified_lines) {
+        if (c.added) {
+            changes['+'].unshift({ lineNr: c.lineNumber })
+        } else {
+            changes['-'].push({ lineNr: c.lineNumber, content: c.line })
+        }
+    }
+    try {
+        const code = new PyCode(patch.raw, changes)
+        return [false, true].map((b) => {
+            return code.genCode(b)
+        })
+    } catch {
+        throw new Error(
+            `[\x1b[31mERR\x1b[0m] failed to generate PyCode with [${patch.filename}]`
+        )
+    }
+}
+
+const genCodesFromCommitURL = async (
+    commit: string
+): Promise<{ name: string; codes: string[] }[]> => {
+    const files = []
+    const patches = await fetchCommit(commit)
+    for (const patch of patches) {
+        try {
+            files.push({
+                name: patch.filename,
+                codes: genCodesFromPatch(patch),
+            })
+        } catch (e) {
+            console.error(e)
+            continue
+        }
+    }
+    return files
 }
 
 const LiteASTDiff = (
@@ -333,11 +373,13 @@ const _summary = (result: _DIFFRES): Summary => {
     return res
 }
 
-type AltCodeDiff = CodeDiff<ASTDiffRes|LiteASTDiffRes>
+type AltCodeDiff = CodeDiff<ASTDiffRes | LiteASTDiffRes>
 
 export { CodeDiff as CodeInfo, AltCodeDiff as AltCodeInfo, options as OPT }
 
 export {
+    genCodesFromPatch,
+    genCodesFromCommitURL,
     loadFromSnip,
     loadCommitURL,
     loadPatchFile,
