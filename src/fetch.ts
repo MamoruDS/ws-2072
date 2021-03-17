@@ -98,6 +98,14 @@ export type PatchFile = {
     raw: string
 }
 
+export class FetchErr extends Error {
+    readonly status: number
+    constructor(message: string, status: number) {
+        super(message)
+        this.status = status
+    }
+}
+
 export const fetchCommit = async (commitUri: string): Promise<PatchFile[]> => {
     let url: string
     if (commitUri.match(/api\.github\.com\/repos\//)) {
@@ -109,10 +117,17 @@ export const fetchCommit = async (commitUri: string): Promise<PatchFile[]> => {
     }
     const res = await fetch(url, 'GET', {
         Authorization: OPT.githubToken ? `token ${OPT.githubToken}` : '',
+        'User-Agent': 'fetchTool',
     })
     if (res.err) {
         if (res.status == 422) {
             return []
+        }
+        if (res.status == 403) {
+            throw new FetchErr(
+                res.response['data']['message'] ?? 'unknown issue',
+                403
+            )
         }
         // TODO:
         return []

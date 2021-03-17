@@ -3,6 +3,8 @@ import { fetchCommit, PatchFile } from './fetch'
 import { getAST, ASTDiffAlt, ASTDiffRes } from './ast'
 import { diffLiteNode, LiteNode, loadFromAST } from './liteAST'
 
+export { FetchErr } from './fetch'
+
 const options = {
     githubToken: undefined,
     pythonBIN: 'python',
@@ -186,6 +188,10 @@ function loadFromSnip(
     if (!useLiteAST) {
         const astOld = getAST(snipOld)
         const astNew = getAST(snipNew)
+        console.log({
+            pre: astOld,
+            post: astNew,
+        })
         ASTDiffAlt(astOld['ast_object'], astNew['ast_object']).forEach(
             (_diff) => {
                 diff.push(_diff)
